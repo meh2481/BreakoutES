@@ -3,6 +3,7 @@ package edu.dsu.mark.openglesenvironment;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
@@ -42,6 +43,12 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
     private float camX, camY, camZ;
     private boolean tiltMove;
+    private Context mContext;
+
+    public void setContext(Context c)
+    {
+        mContext = c;
+    }
 
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config) {
@@ -51,6 +58,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
         //mTriangle = new Triangle();
         mSquare   = new Quad();
+        mSquare.setContext(mContext);
+        mSquare.loadImage("mipmap/ic_launcher");
         camX = camY = 0;
         camZ = -6;
         tiltMove = false;
@@ -191,55 +200,5 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
 
     }
-
-
-
-    public static float uvs[];
-    public FloatBuffer vertexBuffer;
-    public ShortBuffer drawListBuffer;
-    public FloatBuffer uvBuffer;
-
-    /*public void SetupImage()
-    {
-        // Create our UV coordinates.
-        uvs = new float[] {
-                0.0f, 0.0f,
-                0.0f, 1.0f,
-                1.0f, 1.0f,
-                1.0f, 0.0f
-        };
-
-        // The texture buffer
-        ByteBuffer bb = ByteBuffer.allocateDirect(uvs.length * 4);
-        bb.order(ByteOrder.nativeOrder());
-        uvBuffer = bb.asFloatBuffer();
-        uvBuffer.put(uvs);
-        uvBuffer.position(0);
-
-        // Generate Textures, if more needed, alter these numbers.
-        int[] texturenames = new int[1];
-        GLES20.glGenTextures(1, texturenames, 0);
-
-        // Retrieve our image from resources.
-        int id = mContext.getResources().getIdentifier("mipmap/ic_launcher", null, mContext.getPackageName());
-
-        // Temporary create a bitmap
-        Bitmap bmp = BitmapFactory.decodeResource(mContext.getResources(), id);
-
-        // Bind texture to texturename
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
-        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texturenames[0]);
-
-        // Set filtering
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
-        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-
-        // Load the bitmap into the bound texture.
-        GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
-
-        // We are done using the bitmap so we should recycle it.
-        bmp.recycle();
-
-    }*/
 
 }
