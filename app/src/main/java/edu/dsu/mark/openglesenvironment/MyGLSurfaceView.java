@@ -48,8 +48,7 @@ public class MyGLSurfaceView extends GLSurfaceView {
                 y = (float) (y - getHeight() / 2.0);
                 x = (float) (x - getWidth() / 2.0);
 
-                mRenderer.setAngle((float) (atan2(y, x) * 180 / Math.PI));  // = 180.0f / 320
-                //requestRender();
+                mRenderer.setAngle((float) (atan2(y, x)));
         }
         return true;
     }

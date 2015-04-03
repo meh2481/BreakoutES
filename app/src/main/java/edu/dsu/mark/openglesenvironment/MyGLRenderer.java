@@ -4,18 +4,11 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
-import android.opengl.GLUtils;
 import android.opengl.Matrix;
+import android.os.SystemClock;
 import android.util.Log;
-
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
-import java.nio.ShortBuffer;
 
 /**
  * Provides drawing instructions for a GLSurfaceView object. This class
@@ -30,13 +23,22 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "MyGLRenderer";
     //private Triangle mTriangle;
-    private Quad mSquare;
+    private Quad qPaddle;
+    private Quad testQuad;
+    private Obj oBall;
+    private Obj oPaddle;
+
+    private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
+    private static final float TODEG = (float) (180.0f / Math.PI);
+    private static final float TORAD = (float) (Math.PI / 180.0f);
+
+    private long lastTime;
 
     // mMVPMatrix is an abbreviation for "Model View Projection Matrix"
     private final float[] mMVPMatrix = new float[16];
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
-    private final float[] mRotationMatrix = new float[16];
+    //private final float[] mRotationMatrix = new float[16];
 
     private float mAngle;
     private float mAngleDest;
@@ -51,15 +53,29 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     }
 
     @Override
-    public void onSurfaceCreated(GL10 unused, EGLConfig config) {
+    public void onSurfaceCreated(GL10 unused, EGLConfig config)
+    {
+
+        lastTime = SystemClock.uptimeMillis();
 
         // Set the background frame color
-        GLES20.glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
+        GLES20.glEnable(GLES20.GL_BLEND);
 
         //mTriangle = new Triangle();
-        mSquare   = new Quad();
-        mSquare.setContext(mContext);
-        mSquare.loadImage("mipmap/ic_launcher");
+        qPaddle = new Quad();
+        qPaddle.loadImage("drawable/paddle", mContext);
+
+        testQuad = new Quad();
+        testQuad.loadImage("drawable/pinball", mContext);
+        //testQuad.setColor(1, 0, 0, 1);
+
+        oBall = new Obj(testQuad);
+        oBall.scale = 0.5f;
+        oPaddle = new Obj(qPaddle);
+
+
         camX = camY = 0;
         camZ = -6;
         tiltMove = false;
@@ -67,6 +83,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
     @Override
     public void onDrawFrame(GL10 unused) {
+
+        long curTime = SystemClock.uptimeMillis();
 
         if(tiltMove)
         {
@@ -81,36 +99,42 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
             }
         }
 
-        float[] scratch = new float[16];
+        //float[] scratch = new float[16];
 
         // Draw background color
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
         // Set the camera position (View matrix)
-        //Matrix.setLookAtM();
         Matrix.setLookAtM(mViewMatrix, 0, 0, 0, -2, 0f, 0f, 0f, 0f, 1.0f, 0f);
 
         // Calculate the projection and view transformation
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
 
-        // Create a rotation for the triangle
-
-        // Use the following code to generate constant rotation.
-        // Leave this code out when using TouchEvents.
-        // long time = SystemClock.uptimeMillis() % 4000L;
-        // float angle = 0.090f * ((int) time);
-
-        Matrix.setIdentityM(mRotationMatrix, 0);
-        Matrix.rotateM(mRotationMatrix, 0, mAngle, 0, 0, 1.0f);
-        Matrix.translateM(mRotationMatrix, 0, -2f, 0, 0);
+        //Matrix.setIdentityM(mRotationMatrix, 0);
+        //Matrix.rotateM(mRotationMatrix, 0, mAngle, 0, 0, 1.0f);
+        //Matrix.translateM(mRotationMatrix, 0, -2f, 0, 0);
 
         // Combine the rotation matrix with the projection and camera view
         // Note that the mMVPMatrix factor *must be first* in order
         // for the matrix multiplication product to be correct.
-        Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
+        //Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
 
-        // Draw square
-        mSquare.draw(scratch);
+        // Draw paddle test thing
+        //qPaddle.draw(scratch);
+
+        //Matrix.setIdentityM(mRotationMatrix, 0);
+        //Matrix.scaleM(mRotationMatrix, 0, 2, 1, 1);
+        //Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
+        //testQuad.draw(scratch);
+
+        oPaddle.angle = mAngle - 90.0f;
+        oPaddle.x = (float) -(Math.cos(TORAD * mAngle) * paddleDist);
+        oPaddle.y = (float) -(Math.sin(TORAD * mAngle) * paddleDist);
+
+        oBall.draw(mMVPMatrix);
+        oPaddle.draw(mMVPMatrix);
+
+        lastTime = curTime;
     }
 
     @Override
@@ -123,7 +147,6 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
         // this projection matrix is applied to object coordinates
         // in the onDrawFrame() method
-        //Matrix.frustumM();
         Matrix.frustumM(mProjectionMatrix, 0, -ratio, ratio, -1, 1, 1, 7);
 
     }
@@ -183,8 +206,9 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     /**
      * Sets the rotation angle of the triangle shape (mTriangle).
      */
-    public void setAngle(float angle) {
-        mAngle = angle;
+    public void setAngle(float angle)
+    {
+        mAngle = angle * TODEG;
     }
 
     public void setCam(float posX, float posY, float posZ)

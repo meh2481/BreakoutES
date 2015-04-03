@@ -17,16 +17,6 @@ import android.opengl.GLUtils;
 public class Quad {
 
     private final String vertexShaderCode =
-            // This matrix member variable provides a hook to manipulate
-            // the coordinates of the objects that use this vertex shader
-            /*"uniform mat4 uMVPMatrix;" +
-                    "attribute vec4 vPosition;" +
-                    "void main() {" +
-                    // The matrix must be included as a modifier of gl_Position.
-                    // Note that the uMVPMatrix factor *must be first* in order
-                    // for the matrix multiplication product to be correct.
-                    "  gl_Position = uMVPMatrix * vPosition;" +
-                    "}";*/
             "uniform mat4 uMVPMatrix;" +
             "attribute vec4 vPosition;" +
             "attribute vec2 a_texCoord;" +
@@ -37,16 +27,12 @@ public class Quad {
             "}";
 
     private final String fragmentShaderCode =
-            /*"precision mediump float;" +
-                    "uniform vec4 vColor;" +
-                    "void main() {" +
-                    "  gl_FragColor = vColor;" +
-                    "}";*/
             "precision mediump float;" +
             "varying vec2 v_texCoord;" +
             "uniform sampler2D s_texture;" +
+            "uniform vec4 vColor;" +
             "void main() {" +
-            "  gl_FragColor = texture2D( s_texture, v_texCoord );" +
+            "  gl_FragColor = vColor * texture2D( s_texture, v_texCoord );" +
             "}";
 
     private final FloatBuffer vertexBuffer;
@@ -54,12 +40,11 @@ public class Quad {
     private final int mProgram;
     public static float uvs[];
     public FloatBuffer uvBuffer;
-    public Context mContext;
     private int width, height;
     int texID;
+    private float r, g, b, a;
 
     // number of coordinates per vertex in this array
-    static final int COORDS_PER_VERTEX = 3;
     static float squareCoords[] = {
             -0.5f,  0.5f, 0.0f,   // top left
             -0.5f, -0.5f, 0.0f,   // bottom left
@@ -68,8 +53,6 @@ public class Quad {
     };
 
     private final short drawOrder[] = { 0, 1, 2, 0, 2, 3 }; // order to draw vertices
-    //private final int vertexStride = COORDS_PER_VERTEX * 4; // 4 bytes per vertex
-    //float color[] = { 0.2f, 0.709803922f, 0.898039216f, 1.0f };
 
     public int getWidth()
     {
@@ -81,23 +64,31 @@ public class Quad {
         return height;
     }
 
+    public void setColor(float fr, float fg, float fb, float fa)
+    {
+        r = fr;
+        g = fg;
+        b = fb;
+        a = fa;
+    }
+
+
     /**
      * Sets up the drawing object data for use in an OpenGL ES context.
      */
     public Quad() {
+
+        setColor(1.0f, 1.0f, 1.0f, 1.0f);
+
         // initialize vertex byte buffer for shape coordinates
-        ByteBuffer bb = ByteBuffer.allocateDirect(
-                // (# of coordinate values * 4 bytes per float)
-                squareCoords.length * 4);
+        ByteBuffer bb = ByteBuffer.allocateDirect(squareCoords.length * 4);
         bb.order(ByteOrder.nativeOrder());
         vertexBuffer = bb.asFloatBuffer();
         vertexBuffer.put(squareCoords);
         vertexBuffer.position(0);
 
         // initialize byte buffer for the draw list
-        ByteBuffer dlb = ByteBuffer.allocateDirect(
-                // (# of coordinate values * 2 bytes per short)
-                drawOrder.length * 2);
+        ByteBuffer dlb = ByteBuffer.allocateDirect(drawOrder.length * 2);
         dlb.order(ByteOrder.nativeOrder());
         drawListBuffer = dlb.asShortBuffer();
         drawListBuffer.put(drawOrder);
@@ -132,9 +123,6 @@ public class Quad {
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texID);
 
-        // clear Screen and Depth Buffer, we have set the clear color as black.
-        //GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
-
         // get handle to vertex shader's vPosition member
         int mPositionHandle = GLES20.glGetAttribLocation(mProgram, "vPosition");
 
@@ -156,6 +144,14 @@ public class Quad {
         GLES20.glVertexAttribPointer ( mTexCoordLoc, 2, GLES20.GL_FLOAT,
                 false,
                 0, uvBuffer);
+
+        // get handle to fragment shader's vColor member
+        int colorHandle = GLES20.glGetUniformLocation(mProgram, "vColor");
+
+        float color[] = {r, g, b, a};
+
+        // Set color for drawing the triangle
+        GLES20.glUniform4fv(colorHandle, 1, color, 0);
 
         // Get handle to shape's transformation matrix
         int mHandle = GLES20.glGetUniformLocation(mProgram, "uMVPMatrix");
@@ -179,12 +175,7 @@ public class Quad {
 
     }
 
-    public void setContext(Context c)
-    {
-        mContext = c;
-    }
-
-    public void loadImage(String s)
+    public void loadImage(String s, Context mContext)
     {
         // Create our UV coordinates.
         uvs = new float[] {
@@ -217,7 +208,7 @@ public class Quad {
         // Bind texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textures[0]);
-        texID = textures[0];    //Save for later binding I guess?
+        texID = textures[0];    //Save for later binding
 
         // Set filtering
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
