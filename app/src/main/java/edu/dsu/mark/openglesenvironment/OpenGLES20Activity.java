@@ -32,6 +32,7 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
         super.onPause();
         senSensorManager.unregisterListener(this);
         mGLView.onPause();
+        //TODO Pause physics sim
     }
 
     @Override
@@ -39,6 +40,7 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
         super.onResume();
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         mGLView.onResume();
+        //TODO Resume physics sim
     }
 
     @Override

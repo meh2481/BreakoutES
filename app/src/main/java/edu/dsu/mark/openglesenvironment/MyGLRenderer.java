@@ -22,11 +22,9 @@ import android.util.Log;
 public class MyGLRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "MyGLRenderer";
-    //private Triangle mTriangle;
-    private Quad qPaddle;
-    private Quad testQuad;
     private Obj oBall;
     private Obj oPaddle;
+    private Obj oWalls;
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
     private static final float TODEG = (float) (180.0f / Math.PI);
@@ -47,34 +45,48 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     private boolean tiltMove;
     private Context mContext;
 
-    public void setContext(Context c)
-    {
+    public void setContext(Context c) {
         mContext = c;
+    }
+
+    public MyGLRenderer()
+    {
+        lastTime = SystemClock.uptimeMillis();
+
+        oBall = new Obj();
+        oBall.scale = 0.5f;
+        oBall.speed = 3.0f;
+        oBall.dir = (float) Math.random() * 360;
+        oBall.x = (float) (Math.random() * 2 - 1);
+        oBall.y = (float) (Math.random() * 2 - 1);
+        oPaddle = new Obj();
+
+        oWalls = new Obj();
+
     }
 
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config)
     {
-
-        lastTime = SystemClock.uptimeMillis();
-
         // Set the background frame color
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glEnable(GLES20.GL_BLEND);
 
-        //mTriangle = new Triangle();
-        qPaddle = new Quad();
+        Quad qPaddle = new Quad();
         qPaddle.loadImage("drawable/paddle", mContext);
 
-        testQuad = new Quad();
+
+        Quad testQuad = new Quad();
         testQuad.loadImage("drawable/pinball", mContext);
         //testQuad.setColor(1, 0, 0, 1);
 
-        oBall = new Obj(testQuad);
-        oBall.scale = 0.5f;
-        oPaddle = new Obj(qPaddle);
+        Quad wallQuad = new Quad();
+        wallQuad.loadImage("drawable/walls", mContext);
 
+        oBall.q = testQuad;
+        oPaddle.q = qPaddle;
+        oWalls.q = wallQuad;
 
         camX = camY = 0;
         camZ = -6;
@@ -82,12 +94,15 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     }
 
     @Override
-    public void onDrawFrame(GL10 unused) {
+    public void onDrawFrame(GL10 unused)
+    {
 
         long curTime = SystemClock.uptimeMillis();
+        long diffTime = curTime - lastTime;
+        float dt = (float) (diffTime) / 1000.0f;
+        updateObjects(dt);
 
-        if(tiltMove)
-        {
+        if (tiltMove) {
             float ANGLE_MOVE = 10.5f;
 
             if (mAngle < mAngleDest) {
@@ -131,8 +146,9 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         oPaddle.x = (float) -(Math.cos(TORAD * mAngle) * paddleDist);
         oPaddle.y = (float) -(Math.sin(TORAD * mAngle) * paddleDist);
 
-        oBall.draw(mMVPMatrix);
+        oWalls.draw(mMVPMatrix);
         oPaddle.draw(mMVPMatrix);
+        oBall.draw(mMVPMatrix);
 
         lastTime = curTime;
     }
@@ -153,15 +169,15 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
     /**
      * Utility method for compiling a OpenGL shader.
-     *
+     * <p/>
      * <p><strong>Note:</strong> When developing shaders, use the checkGlError()
      * method to debug shader coding errors.</p>
      *
-     * @param type - Vertex or fragment shader type.
+     * @param type       - Vertex or fragment shader type.
      * @param shaderCode - String containing the shader code.
      * @return - Returns an id for the shader.
      */
-    public static int loadShader(int type, String shaderCode){
+    public static int loadShader(int type, String shaderCode) {
 
         // create a vertex shader type (GLES20.GL_VERTEX_SHADER)
         // or a fragment shader type (GLES20.GL_FRAGMENT_SHADER)
@@ -177,7 +193,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     /**
      * Utility method for debugging OpenGL calls. Provide the name of the call
      * just after making it:
-     *
+     * <p/>
      * <pre>
      * mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor");
      * MyGLRenderer.checkGlError("glGetUniformLocation");</pre>
@@ -206,9 +222,76 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     /**
      * Sets the rotation angle of the triangle shape (mTriangle).
      */
-    public void setAngle(float angle)
-    {
+    public void setAngle(float angle) {
         mAngle = angle * TODEG;
+    }
+
+    public float wrapAngle(float angle)
+    {
+        if(angle < 0)
+            return angle + 360;
+        if(angle > 360)
+            return angle - 360;
+        return angle;
+    }
+
+    public float reflect(float angleToRef, float surfNormal)    //Assume reflection is possible yaay
+    {
+        angleToRef = wrapAngle(angleToRef + 180);
+        float diff = surfNormal - angleToRef;
+        if(diff > 90)
+        {
+            surfNormal -= 360;
+            diff = surfNormal - angleToRef;
+        }
+        if(diff < -90)
+        {
+            surfNormal += 360;
+            diff = surfNormal - angleToRef;
+        }
+        return wrapAngle(surfNormal + diff);
+    }
+
+    public void wallCheck(Obj o)
+    {
+
+        float objDist = (float) Math.sqrt(o.x*o.x + o.y*o.y);
+        float objAngle = (float) (TODEG * Math.atan2(o.y, o.x));
+
+        if(objDist > paddleDist)
+        {
+            o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
+            o.x = (float) (Math.cos(objAngle * TORAD) * paddleDist);
+            o.y = (float) (Math.sin(objAngle * TORAD) * paddleDist);
+        }
+
+        /*if(o.x < -paddleDist)
+        {
+            o.x = -paddleDist;
+            o.dir = reflect(o.dir, 0);
+        }
+        else if (o.x > paddleDist)
+        {
+            o.x = paddleDist;
+            o.dir = reflect(o.dir, 180);
+        }
+        if(o.y < -paddleDist)
+        {
+            o.y = -paddleDist;
+            o.dir = reflect(o.dir, 270);
+        }
+        else if(o.y > paddleDist)
+        {
+            o.y = paddleDist;
+            o.dir = reflect(o.dir, 90);
+        }*/
+    }
+
+    public void updateObjects(float dt)
+    {
+        oBall.update(dt);
+        oPaddle.update(dt);
+        wallCheck(oBall);
     }
 
     public void setCam(float posX, float posY, float posZ)
