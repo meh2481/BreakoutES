@@ -1,4 +1,4 @@
-package edu.dsu.mark.openglesenvironment;
+package edu.dsu.mark.breakoutes;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -95,10 +95,10 @@ public class Quad {
         drawListBuffer.position(0);
 
         // prepare shaders and OpenGL program
-        int vertexShader = MyGLRenderer.loadShader(
+        int vertexShader = BreakoutESRenderer.loadShader(
                 GLES20.GL_VERTEX_SHADER,
                 vertexShaderCode);
-        int fragmentShader = MyGLRenderer.loadShader(
+        int fragmentShader = BreakoutESRenderer.loadShader(
                 GLES20.GL_FRAGMENT_SHADER,
                 fragmentShaderCode);
 

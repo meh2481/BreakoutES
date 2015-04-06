@@ -1,4 +1,4 @@
-package edu.dsu.mark.openglesenvironment;
+package edu.dsu.mark.breakoutes;
 
 import android.app.Application;
 import android.test.ApplicationTestCase;

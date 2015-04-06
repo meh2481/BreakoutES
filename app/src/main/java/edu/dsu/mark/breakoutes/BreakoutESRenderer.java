@@ -1,4 +1,4 @@
-package edu.dsu.mark.openglesenvironment;
+package edu.dsu.mark.breakoutes;
 
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
@@ -19,7 +19,7 @@ import android.util.Log;
  *   <li>{@link android.opengl.GLSurfaceView.Renderer#onSurfaceChanged}</li>
  * </ul>
  */
-public class MyGLRenderer implements GLSurfaceView.Renderer {
+public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "MyGLRenderer";
     private Obj oBall;
@@ -46,7 +46,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         mContext = c;
     }
 
-    public MyGLRenderer()
+    public BreakoutESRenderer()
     {
         lastTime = SystemClock.uptimeMillis();
 
@@ -245,36 +245,18 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     public void wallCheck(Obj o)
     {
 
-        /*float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
-        float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
+        float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
+        //float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
 
         //Simple test to make ball bounce off circular walls
         if(objDist > paddleDist)
         {
-            o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
+            /*o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
             o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * paddleDist);
-            o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);
-        }*/
-
-        if(o.pos.x < -paddleDist)
-        {
-            o.pos.x = -paddleDist;
-            o.dir = reflect(o.dir, 0);
-        }
-        else if (o.pos.x > paddleDist)
-        {
-            o.pos.x = paddleDist;
-            o.dir = reflect(o.dir, 180);
-        }
-        if(o.pos.y < -paddleDist)
-        {
-            o.pos.y = -paddleDist;
-            o.dir = reflect(o.dir, 270);
-        }
-        else if(o.pos.y > paddleDist)
-        {
-            o.pos.y = paddleDist;
-            o.dir = reflect(o.dir, 90);
+            o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);*/
+            o.pos.x = o.pos.y = 0;
+            o.dir = 0;
+            oPaddle.setColor(1,0,0,1);  //TODO: Gameover
         }
     }
 
@@ -286,7 +268,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
         ContactManifold cm = oBall.colliding(oPaddle);
 
-        if(cm.collide)
+        if(cm.collide)  //If ball and paddle are hitting
         {
             oBall.setColor(1, 0, 0, 1);
             oBall.dir = reflect(oBall.dir, cm.normal2.angle());

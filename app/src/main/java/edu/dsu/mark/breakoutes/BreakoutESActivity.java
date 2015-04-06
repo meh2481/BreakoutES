@@ -1,25 +1,26 @@
-package edu.dsu.mark.openglesenvironment;
+package edu.dsu.mark.breakoutes;
 
 import android.app.Activity;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
-import android.opengl.GLSurfaceView;
 import android.os.Bundle;
 
-public class OpenGLES20Activity extends Activity implements SensorEventListener {
+public class BreakoutESActivity extends Activity implements SensorEventListener
+{
 
-    private MyGLSurfaceView mGLView;
+    private BreakoutESSurfaceView mGLView;
     private SensorManager senSensorManager;
     private Sensor senAccelerometer;
     private float lastX, lastY, lastZ;
 
     @Override
-    public void onCreate(Bundle savedInstanceState) {
+    public void onCreate(Bundle savedInstanceState)
+    {
         super.onCreate(savedInstanceState);
 
-        mGLView = new MyGLSurfaceView(this);
+        mGLView = new BreakoutESSurfaceView(this);
         setContentView(mGLView);
 
         senSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
@@ -28,7 +29,8 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
     }
 
     @Override
-    protected void onPause() {
+    protected void onPause()
+    {
         super.onPause();
         senSensorManager.unregisterListener(this);
         mGLView.onPause();
@@ -36,7 +38,8 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
     }
 
     @Override
-    protected void onResume() {
+    protected void onResume()
+    {
         super.onResume();
         senSensorManager.registerListener(this, senAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
         mGLView.onResume();
@@ -44,7 +47,8 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
     }
 
     @Override
-    public void onSensorChanged(SensorEvent sensorEvent) {
+    public void onSensorChanged(SensorEvent sensorEvent)
+    {
         Sensor mySensor = sensorEvent.sensor;
 
         if (mySensor.getType() == Sensor.TYPE_ACCELEROMETER) {
@@ -59,7 +63,8 @@ public class OpenGLES20Activity extends Activity implements SensorEventListener 
     }
 
     @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
+    public void onAccuracyChanged(Sensor sensor, int i)
+    {
 
     }
 }
