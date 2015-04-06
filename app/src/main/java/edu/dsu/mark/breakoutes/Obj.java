@@ -7,10 +7,12 @@ import android.opengl.Matrix;
  */
 public class Obj
 {
-
-    
-
     private static final float pix_per_tex = 300.0f;    //Could use actual math to get this number, but why bother?
+
+    public static final int typeNone = 0;
+    public static final int typeBlock = 1;
+    public static final int typeBall = 2;
+    public static final int typePaddle = 3;
 
     public Quad q;
     public Point pos;
@@ -23,9 +25,15 @@ public class Obj
     public float dir, speed;   //Used to update movement
 
     public Shape collide;
+    public String sImg;
+
+    public int type;
+    public boolean active;
 
     public Obj()//Quad qd)
     {
+        active = true;
+        type = typeNone;
         q = null;
         collide = null;
         pos = new Point();
@@ -38,7 +46,7 @@ public class Obj
 
     public void draw(float[] m)
     {
-        if(q == null)
+        if(q == null || !active)
             return;
 
         float[] scratch = new float[16];
@@ -63,6 +71,8 @@ public class Obj
 
     public void update(float dt)
     {
+        if(!active) return;
+
         pos.x += Math.cos(Point.TORAD * dir) * speed * dt;
         pos.y += Math.sin(Point.TORAD * dir) * speed * dt;
 
@@ -118,6 +128,11 @@ public class Obj
 
     public ContactManifold colliding(Obj b)
     {
+        if(collide == null || b.collide == null || !active || !b.active)
+        {
+            ContactManifold cm = new ContactManifold();
+            return cm;
+        }
         return collide.collide(b.collide);
     }
 

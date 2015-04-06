@@ -10,6 +10,11 @@ import android.opengl.Matrix;
 import android.os.SystemClock;
 import android.util.Log;
 
+import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
 /**
  * Provides drawing instructions for a GLSurfaceView object. This class
  * must override the OpenGL ES drawing lifecycle methods:
@@ -21,10 +26,14 @@ import android.util.Log;
  */
 public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
-    private static final String TAG = "MyGLRenderer";
+    private static final String TAG = "BreakoutESRenderer";
     private Obj oBall;
     private Obj oPaddle;
-    private Obj oWalls;
+    //Quad qPaddle;
+
+    private HashMap<String, Quad> mImages;
+    private LinkedList<Obj> mObjects;
+    private LinkedList<Obj> mBlocks;
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
 
@@ -42,23 +51,39 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private boolean tiltMove;
     private Context mContext;
 
-    public void setContext(Context c) {
+    public void setContext(Context c)
+    {
         mContext = c;
     }
 
     public BreakoutESRenderer()
     {
+        mObjects = new LinkedList<Obj>();
+        mBlocks = new LinkedList<Obj>();
         lastTime = SystemClock.uptimeMillis();
 
         oBall = new Obj();
         oBall.scale = 0.5f;
         oBall.speed = 1.0f;
-        oBall.dir = (float) Math.random() * 360;
-        oBall.pos.x = (float) (Math.random() * 2 - 1);
-        oBall.pos.y = (float) (Math.random() * 2 - 1);
+        oBall.dir = 0;
+        oBall.pos.x = -1.5f;
+        oBall.pos.y = 0;
         oPaddle = new Obj();
 
-        oWalls = new Obj();
+        Obj oWalls = new Obj();
+
+        oWalls.sImg = "drawable/walls";
+        oPaddle.sImg = "drawable/paddle";
+        oBall.sImg = "drawable/pinball";
+
+        oBall.type = Obj.typeBall;
+        oPaddle.type = Obj.typePaddle;
+
+        mObjects.add(oWalls);
+        mObjects.add(oPaddle);
+        mObjects.add(oBall);
+
+        resetLevel();
 
     }
 
@@ -70,20 +95,24 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glEnable(GLES20.GL_BLEND);
 
-        Quad qPaddle = new Quad();
-        qPaddle.loadImage("drawable/paddle", mContext);
+        mImages = new HashMap<String, Quad>();  //Dump any previous image memory
 
+        //oBall.q = getImage("drawable/pinball");
+        //oPaddle.q = getImage("drawable/paddle");
+        //oWalls.q = getImage("drawable/walls");
 
-        Quad testQuad = new Quad();
-        testQuad.loadImage("drawable/pinball", mContext);
-        //testQuad.setColor(1, 0, 0, 1);
+        //Reload images
+        for(Object i : mObjects)
+        {
+            Obj o = (Obj) i;
+            o.q = getImage(o.sImg);
+        }
 
-        Quad wallQuad = new Quad();
-        wallQuad.loadImage("drawable/walls", mContext);
-
-        oBall.q = testQuad;
-        oPaddle.q = qPaddle;
-        oWalls.q = wallQuad;
+        for(Object i : mBlocks)
+        {
+            Obj o = (Obj) i;
+            o.genCollision();
+        }
 
         //Generate collision info
         oPaddle.genCollision();
@@ -131,9 +160,14 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oPaddle.pos.y = (float) -(Math.sin(Point.TORAD * mAngle) * paddleDist);
 
         //Draw objects
-        oWalls.draw(mMVPMatrix);
-        oPaddle.draw(mMVPMatrix);
-        oBall.draw(mMVPMatrix);
+        for(Object i : mObjects)
+        {
+            Obj o = (Obj) i;
+            o.draw(mMVPMatrix);
+        }
+        //oWalls.draw(mMVPMatrix);
+        //oPaddle.draw(mMVPMatrix);
+        //oBall.draw(mMVPMatrix);
 
         lastTime = curTime;
     }
@@ -204,7 +238,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
      *
      * @return - A float representing the rotation angle.
      */
-    public float getAngle() {
+    public float getAngle()
+    {
         return mAngle;
     }
 
@@ -254,19 +289,54 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             /*o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
             o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * paddleDist);
             o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);*/
-            o.pos.x = o.pos.y = 0;
-            o.dir = 0;
-            oPaddle.setColor(1,0,0,1);  //TODO: Gameover
+            oBall.dir = 0;
+            oBall.pos.x = -1.5f;
+            oBall.pos.y = 0;
+            //oPaddle.setColor(1,0,0,1);  //TODO: Game over
         }
     }
 
     public void updateObjects(float dt)
     {
-        oBall.update(dt);
-        oPaddle.update(dt);
+        for(Object i : mObjects)
+        {
+            Obj o = (Obj) i;
+            o.update(dt);
+        }
+        //oBall.update(dt);
+        //oPaddle.update(dt);
         wallCheck(oBall);
 
-        ContactManifold cm = oBall.colliding(oPaddle);
+        oBall.setColor(1,1,1,1);
+        for(Object i : mObjects)
+        {
+            Obj o = (Obj) i;
+            if(o == oBall)
+                continue;
+
+            ContactManifold cm = oBall.colliding(o);
+            if(cm.collide)  //If ball and something are hitting
+            {
+                oBall.setColor(1, 0, 0, 1);
+                oBall.dir = reflect(oBall.dir, cm.normal2.angle());
+                oBall.pos.x += cm.normal2.x;
+                oBall.pos.y += cm.normal2.y;
+
+                if(o.type == Obj.typeBlock)
+                {
+                    o.active = false; //Break block
+                    mObjects.remove(o);
+                    mBlocks.remove(o);
+                    if(mBlocks.isEmpty())
+                    {
+                        //TODO: Won state
+                        resetLevel();
+                    }
+                }
+            }
+        }
+
+        /*ContactManifold cm = oBall.colliding(oPaddle);
 
         if(cm.collide)  //If ball and paddle are hitting
         {
@@ -275,8 +345,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             oBall.pos.x += cm.normal2.x;
             oBall.pos.y += cm.normal2.y;
         }
-        else
-            oBall.setColor(1,1,1,1);
+        else*/
+
 
 
     }
@@ -293,6 +363,28 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         mAngleDest = (float) ((float) Math.atan2(posX, posY) * 180 / Math.PI);
 
 
+    }
+
+    private Quad getImage(String sImg)
+    {
+        if(mImages.containsKey(sImg))
+            return mImages.get(sImg);
+        Quad q = new Quad();
+        q.loadImage(sImg, mContext);
+        mImages.put(sImg, q);
+        return q;
+    }
+
+    private void resetLevel()
+    {
+        Obj oBlock = new Obj();
+        oBlock.scale = 0.25f;
+        oBlock.sImg = "drawable/block";
+
+        oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
+        oBlock.type = Obj.typeBlock;
+        mObjects.add(oBlock);
+        mBlocks.add(oBlock);
     }
 
 }

@@ -35,9 +35,9 @@ public class Quad {
             "  gl_FragColor = vColor * texture2D( s_texture, v_texCoord );" +
             "}";
 
-    private final FloatBuffer vertexBuffer;
-    private final ShortBuffer drawListBuffer;
-    private final int mProgram;
+    private FloatBuffer vertexBuffer;
+    private ShortBuffer drawListBuffer;
+    private int mProgram;
     public static float uvs[];
     public FloatBuffer uvBuffer;
     private int width, height;
@@ -76,10 +76,8 @@ public class Quad {
     /**
      * Sets up the drawing object data for use in an OpenGL ES context.
      */
-    public Quad() {
-
-        setColor(1.0f, 1.0f, 1.0f, 1.0f);
-
+    private void init()
+    {
         // initialize vertex byte buffer for shape coordinates
         ByteBuffer bb = ByteBuffer.allocateDirect(squareCoords.length * 4);
         bb.order(ByteOrder.nativeOrder());
@@ -107,6 +105,12 @@ public class Quad {
         GLES20.glAttachShader(mProgram, fragmentShader); // add the fragment shader to program
         GLES20.glLinkProgram(mProgram);                  // create OpenGL program executables
 
+        texID = 0;
+    }
+
+    public Quad()
+    {
+        setColor(1.0f, 1.0f, 1.0f, 1.0f);
         texID = 0;
     }
 
@@ -177,6 +181,8 @@ public class Quad {
 
     public void loadImage(String s, Context mContext)
     {
+        init();
+
         // Create our UV coordinates.
         uvs = new float[] {
                 1.0f, 0.0f,
