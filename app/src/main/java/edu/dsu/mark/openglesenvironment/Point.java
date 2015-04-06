@@ -36,4 +36,20 @@ public class Point
     {
         return (float) (Math.atan2(y, x) * TODEG);
     }
+
+    public void rotate(float angle)
+    {
+        float c = (float) Math.cos(angle * Point.TORAD);
+        float s = (float) Math.sin(angle * Point.TORAD);
+        float origX = x;
+        float origY = y;
+        x = c*origX - s*origY;
+        y = s*origX + c*origY;
+    }
+
+    public void mul(float amt)
+    {
+        x *= amt;
+        y *= amt;
+    }
 }

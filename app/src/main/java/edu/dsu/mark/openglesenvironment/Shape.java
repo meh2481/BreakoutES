@@ -14,7 +14,8 @@ public abstract class Shape
     {
         type = 0;
         angle = 0;
+        pos = new Point();
     }
 
-
+    public abstract ContactManifold collide(Shape s);
 }

@@ -28,6 +28,7 @@ public class Obj
     {
         q = null;
         collide = null;
+        pos = new Point();
         angle = 0.0f;
         scale = 1.0f;
         r = g = b = a = 1;
@@ -65,9 +66,12 @@ public class Obj
         pos.x += Math.cos(Point.TORAD * dir) * speed * dt;
         pos.y += Math.sin(Point.TORAD * dir) * speed * dt;
 
-        collide.pos.x = pos.x;
-        collide.pos.y = pos.y;
-        collide.angle = angle;
+        if(collide != null)
+        {
+            collide.pos.x = pos.x;
+            collide.pos.y = pos.y;
+            collide.angle = angle;
+        }
     }
 
     public void setColor(float cr, float cg, float cb, float ca)
@@ -97,7 +101,7 @@ public class Obj
         if(circle)
         {
             Circle c = new Circle();
-            c.rad = Math.min(w, h);
+            c.rad = Math.min(w/2.0f, h/2.0f);
 
             collide = c;
         }
@@ -110,6 +114,11 @@ public class Obj
 
             collide = r;
         }
+    }
+
+    public ContactManifold colliding(Obj b)
+    {
+        return collide.collide(b.collide);
     }
 
 }

@@ -52,7 +52,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
 
         oBall = new Obj();
         oBall.scale = 0.5f;
-        oBall.speed = 3.0f;
+        oBall.speed = 1.0f;
         oBall.dir = (float) Math.random() * 360;
         oBall.pos.x = (float) (Math.random() * 2 - 1);
         oBall.pos.y = (float) (Math.random() * 2 - 1);
@@ -84,6 +84,10 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         oBall.q = testQuad;
         oPaddle.q = qPaddle;
         oWalls.q = wallQuad;
+
+        //Generate collision info
+        oPaddle.genCollision();
+        oBall.genCollision(true);
 
         camX = camY = 0;
         camZ = -6;
@@ -241,7 +245,7 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     public void wallCheck(Obj o)
     {
 
-        float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
+        /*float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
         float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
 
         //Simple test to make ball bounce off circular walls
@@ -250,28 +254,28 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
             o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
             o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * paddleDist);
             o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);
-        }
+        }*/
 
-        /*if(o.x < -paddleDist)
+        if(o.pos.x < -paddleDist)
         {
-            o.x = -paddleDist;
+            o.pos.x = -paddleDist;
             o.dir = reflect(o.dir, 0);
         }
-        else if (o.x > paddleDist)
+        else if (o.pos.x > paddleDist)
         {
-            o.x = paddleDist;
+            o.pos.x = paddleDist;
             o.dir = reflect(o.dir, 180);
         }
-        if(o.y < -paddleDist)
+        if(o.pos.y < -paddleDist)
         {
-            o.y = -paddleDist;
+            o.pos.y = -paddleDist;
             o.dir = reflect(o.dir, 270);
         }
-        else if(o.y > paddleDist)
+        else if(o.pos.y > paddleDist)
         {
-            o.y = paddleDist;
+            o.pos.y = paddleDist;
             o.dir = reflect(o.dir, 90);
-        }*/
+        }
     }
 
     public void updateObjects(float dt)
@@ -279,6 +283,20 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         oBall.update(dt);
         oPaddle.update(dt);
         wallCheck(oBall);
+
+        ContactManifold cm = oBall.colliding(oPaddle);
+
+        if(cm.collide)
+        {
+            oBall.setColor(1, 0, 0, 1);
+            oBall.dir = reflect(oBall.dir, cm.normal2.angle());
+            oBall.pos.x += cm.normal2.x;
+            oBall.pos.y += cm.normal2.y;
+        }
+        else
+            oBall.setColor(1,1,1,1);
+
+
     }
 
     public void setCam(float posX, float posY, float posZ)
