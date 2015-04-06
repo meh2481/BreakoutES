@@ -29,6 +29,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private static final String TAG = "BreakoutESRenderer";
     private Obj oBall;
     private Obj oPaddle;
+    private int blocksAdded;
     //Quad qPaddle;
 
     private HashMap<String, Quad> mImages;
@@ -36,6 +37,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private LinkedList<Obj> mBlocks;
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
+    private static final float ballSpeed = 2.0f;
 
     private long lastTime;
 
@@ -64,7 +66,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
         oBall = new Obj();
         oBall.scale = 0.5f;
-        oBall.speed = 1.0f;
+        oBall.speed = ballSpeed;
         oBall.dir = 0;
         oBall.pos.x = -1.5f;
         oBall.pos.y = 0;
@@ -325,9 +327,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                 if(o.type == Obj.typeBlock)
                 {
                     o.active = false; //Break block
-                    mObjects.remove(o);
-                    mBlocks.remove(o);
-                    if(mBlocks.isEmpty())
+                    //mObjects.remove(o);
+                    //mBlocks.remove(o);
+                    blocksAdded--;
+                    if(blocksAdded <= 0)
                     {
                         //TODO: Won state
                         resetLevel();
@@ -377,14 +380,25 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private void resetLevel()
     {
-        Obj oBlock = new Obj();
-        oBlock.scale = 0.25f;
-        oBlock.sImg = "drawable/block";
+        blocksAdded = 0;
+        for(int x = 0; x < 5; x++)
+        {
+            for(int y = 0; y < 5; y++)
+            {
+                Obj oBlock = new Obj();
+                oBlock.scale = 0.25f;
+                oBlock.sImg = "drawable/block";
 
-        oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
-        oBlock.type = Obj.typeBlock;
-        mObjects.add(oBlock);
-        mBlocks.add(oBlock);
+                oBlock.pos.x = x * 0.25f;// - (2.5f * 0.25f);
+                oBlock.pos.y = y * 0.25f;// - (2.5f * 0.25f);
+
+                oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
+                oBlock.type = Obj.typeBlock;
+                mObjects.add(oBlock);
+                mBlocks.add(oBlock);
+                blocksAdded++;
+            }
+        }
     }
 
 }
