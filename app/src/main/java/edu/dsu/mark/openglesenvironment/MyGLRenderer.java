@@ -27,8 +27,6 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     private Obj oWalls;
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
-    private static final float TODEG = (float) (180.0f / Math.PI);
-    private static final float TORAD = (float) (Math.PI / 180.0f);
 
     private long lastTime;
 
@@ -36,7 +34,6 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     private final float[] mMVPMatrix = new float[16];
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
-    //private final float[] mRotationMatrix = new float[16];
 
     private float mAngle;
     private float mAngleDest;
@@ -57,8 +54,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         oBall.scale = 0.5f;
         oBall.speed = 3.0f;
         oBall.dir = (float) Math.random() * 360;
-        oBall.x = (float) (Math.random() * 2 - 1);
-        oBall.y = (float) (Math.random() * 2 - 1);
+        oBall.pos.x = (float) (Math.random() * 2 - 1);
+        oBall.pos.y = (float) (Math.random() * 2 - 1);
         oPaddle = new Obj();
 
         oWalls = new Obj();
@@ -102,7 +99,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         float dt = (float) (diffTime) / 1000.0f;
         updateObjects(dt);
 
-        if (tiltMove) {
+        if (tiltMove)
+        {
             float ANGLE_MOVE = 10.5f;
 
             if (mAngle < mAngleDest) {
@@ -114,8 +112,6 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
             }
         }
 
-        //float[] scratch = new float[16];
-
         // Draw background color
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
@@ -125,27 +121,12 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
         // Calculate the projection and view transformation
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
 
-        //Matrix.setIdentityM(mRotationMatrix, 0);
-        //Matrix.rotateM(mRotationMatrix, 0, mAngle, 0, 0, 1.0f);
-        //Matrix.translateM(mRotationMatrix, 0, -2f, 0, 0);
-
-        // Combine the rotation matrix with the projection and camera view
-        // Note that the mMVPMatrix factor *must be first* in order
-        // for the matrix multiplication product to be correct.
-        //Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
-
-        // Draw paddle test thing
-        //qPaddle.draw(scratch);
-
-        //Matrix.setIdentityM(mRotationMatrix, 0);
-        //Matrix.scaleM(mRotationMatrix, 0, 2, 1, 1);
-        //Matrix.multiplyMM(scratch, 0, mMVPMatrix, 0, mRotationMatrix, 0);
-        //testQuad.draw(scratch);
-
+        //Rotate and move paddle to the proper location
         oPaddle.angle = mAngle - 90.0f;
-        oPaddle.x = (float) -(Math.cos(TORAD * mAngle) * paddleDist);
-        oPaddle.y = (float) -(Math.sin(TORAD * mAngle) * paddleDist);
+        oPaddle.pos.x = (float) -(Math.cos(Point.TORAD * mAngle) * paddleDist);
+        oPaddle.pos.y = (float) -(Math.sin(Point.TORAD * mAngle) * paddleDist);
 
+        //Draw objects
         oWalls.draw(mMVPMatrix);
         oPaddle.draw(mMVPMatrix);
         oBall.draw(mMVPMatrix);
@@ -154,7 +135,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     }
 
     @Override
-    public void onSurfaceChanged(GL10 unused, int width, int height) {
+    public void onSurfaceChanged(GL10 unused, int width, int height)
+    {
         // Adjust the viewport based on geometry changes,
         // such as screen rotation
         GLES20.glViewport(0, 0, width, height);
@@ -177,7 +159,8 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
      * @param shaderCode - String containing the shader code.
      * @return - Returns an id for the shader.
      */
-    public static int loadShader(int type, String shaderCode) {
+    public static int loadShader(int type, String shaderCode)
+    {
 
         // create a vertex shader type (GLES20.GL_VERTEX_SHADER)
         // or a fragment shader type (GLES20.GL_FRAGMENT_SHADER)
@@ -202,9 +185,11 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
      *
      * @param glOperation - Name of the OpenGL call to check.
      */
-    public static void checkGlError(String glOperation) {
+    public static void checkGlError(String glOperation)
+    {
         int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
+        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR)
+        {
             Log.e(TAG, glOperation + ": glError " + error);
             throw new RuntimeException(glOperation + ": glError " + error);
         }
@@ -222,8 +207,9 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     /**
      * Sets the rotation angle of the triangle shape (mTriangle).
      */
-    public void setAngle(float angle) {
-        mAngle = angle * TODEG;
+    public void setAngle(float angle)
+    {
+        mAngle = angle * Point.TODEG;
     }
 
     public float wrapAngle(float angle)
@@ -255,14 +241,15 @@ public class MyGLRenderer implements GLSurfaceView.Renderer {
     public void wallCheck(Obj o)
     {
 
-        float objDist = (float) Math.sqrt(o.x*o.x + o.y*o.y);
-        float objAngle = (float) (TODEG * Math.atan2(o.y, o.x));
+        float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
+        float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
 
+        //Simple test to make ball bounce off circular walls
         if(objDist > paddleDist)
         {
             o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
-            o.x = (float) (Math.cos(objAngle * TORAD) * paddleDist);
-            o.y = (float) (Math.sin(objAngle * TORAD) * paddleDist);
+            o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * paddleDist);
+            o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);
         }
 
         /*if(o.x < -paddleDist)

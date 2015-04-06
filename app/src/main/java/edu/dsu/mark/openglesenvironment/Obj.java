@@ -8,25 +8,29 @@ import android.opengl.Matrix;
 public class Obj
 {
 
-    private static final float TODEG = (float) (180.0f / Math.PI);
-    private static final float TORAD = (float) (Math.PI / 180.0f);
+    
 
     private static final float pix_per_tex = 300.0f;    //Could use actual math to get this number, but why bother?
 
     public Quad q;
-    public float x, y;  // x,y screen pos in texels
+    public Point pos;
+    //public float x, y;  // x,y screen pos in texels
     public float angle; //Rotation to draw at
     public float scale; //scale factor
 
+    private float r, g, b, a;
+
     public float dir, speed;   //Used to update movement
 
-    //TODO collision rect/circle
+    public Shape collide;
 
     public Obj()//Quad qd)
     {
         q = null;
-        x = y = angle = 0.0f;
+        collide = null;
+        angle = 0.0f;
         scale = 1.0f;
+        r = g = b = a = 1;
 
         dir = speed = 0.0f;
     }
@@ -40,7 +44,7 @@ public class Obj
         float[] finalmtx = new float[16];
 
         Matrix.setIdentityM(scratch, 0);
-        Matrix.translateM(scratch, 0, x, y, 0);
+        Matrix.translateM(scratch, 0, pos.x, pos.y, 0);
         Matrix.rotateM(scratch, 0, angle, 0, 0, 1.0f);
 
         float w = q.getWidth();
@@ -52,13 +56,60 @@ public class Obj
         Matrix.scaleM(scratch, 0, w * scale, h * scale, 1);
 
         Matrix.multiplyMM(finalmtx, 0, m, 0, scratch, 0);
+        q.setColor(r, g, b, a);
         q.draw(finalmtx);
     }
 
     public void update(float dt)
     {
-        x += Math.cos(TORAD * dir) * speed * dt;
-        y += Math.sin(TORAD * dir) * speed * dt;
+        pos.x += Math.cos(Point.TORAD * dir) * speed * dt;
+        pos.y += Math.sin(Point.TORAD * dir) * speed * dt;
+
+        collide.pos.x = pos.x;
+        collide.pos.y = pos.y;
+        collide.angle = angle;
+    }
+
+    public void setColor(float cr, float cg, float cb, float ca)
+    {
+        r = cr;
+        g = cg;
+        b = cb;
+        a = ca;
+    }
+
+    public void genCollision()
+    {
+        genCollision(false);
+    }
+
+    public void genCollision(boolean circle)
+    {
+        float w = q.getWidth();
+        float h = q.getHeight();
+
+        w /= pix_per_tex;   //scale according to image size
+        h /= pix_per_tex;
+
+        w *= scale;
+        h *= scale;
+
+        if(circle)
+        {
+            Circle c = new Circle();
+            c.rad = Math.min(w, h);
+
+            collide = c;
+        }
+        else
+        {
+            Rect r = new Rect();
+
+            r.w = w;
+            r.h = h;
+
+            collide = r;
+        }
     }
 
 }
