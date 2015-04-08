@@ -14,6 +14,22 @@ public class Circle extends Shape
         rad = 0;
     }
 
+    public float getWidth()
+    {
+        return rad;
+    }
+
+    public float getHeight()
+    {
+        return rad;
+    }
+
+    public boolean isInside(Point p)
+    {
+        Point test = p.subtract(pos);
+        return (test.length() <= rad);
+    }
+
     public ContactManifold collide(Shape s)
     {
         ContactManifold cm = new ContactManifold();
@@ -66,10 +82,8 @@ public class Circle extends Shape
 
             float normLen = cm.normal1.length();
 
-            if (normLen < rad)
-                cm.collide = true; // Collision
-            else
-                cm.collide = false;
+            // Collision
+            cm.collide = normLen < rad;
 
             cm.normal1.rotate(rc.angle);
 

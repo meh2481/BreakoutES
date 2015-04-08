@@ -18,4 +18,7 @@ public abstract class Shape
     }
 
     public abstract ContactManifold collide(Shape s);
+    public abstract float getWidth();
+    public abstract float getHeight();
+    public abstract boolean isInside(Point p);
 }

@@ -29,9 +29,13 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "BreakoutESRenderer";
     private static final float tapTime = 0.25f;
+    private static final float blockScale = 0.3f;
+    private static final float blockGridSize = blockScale / 1.5625f;//0.16f;
     private Obj oBall;
     private Obj oPaddle;
+    private Obj oEditorButton;
     private int blocksAdded;
+    private boolean bEditor = false;
     //Quad qPaddle;
 
     private HashMap<String, Quad> mImages;
@@ -78,17 +82,21 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oPaddle = new Obj();
 
         Obj oWalls = new Obj();
+        oEditorButton = new Obj();
 
         oWalls.sImg = "drawable/walls";
         oPaddle.sImg = "drawable/paddle";
         oBall.sImg = "drawable/pinball";
+        oEditorButton.sImg = "drawable/editor";
 
         oBall.type = Obj.typeBall;
         oPaddle.type = Obj.typePaddle;
+        oEditorButton.type = Obj.typeButton;
 
         mObjects.add(oWalls);
         mObjects.add(oPaddle);
         mObjects.add(oBall);
+        mObjects.add(oEditorButton);
 
         resetLevel();
 
@@ -124,6 +132,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         //Generate collision info
         oPaddle.genCollision();
         oBall.genCollision(true);
+        oEditorButton.genCollision();
 
         camX = camY = 0;
         camZ = -2;
@@ -139,7 +148,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         float dt = (float) (diffTime) / 1000.0f;
         updateObjects(dt);
 
-        if (tiltMove)
+        if (tiltMove && !bEditor)
         {
             //float ANGLE_MOVE = 10.5f;
 
@@ -203,6 +212,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
         screenWidth = width;
         screenHeight = height;
+
+        oEditorButton.pos = screenToGL(new Point(0,0));
+        //Log.e("THING", "pos: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
+        oEditorButton.pos.x -= oEditorButton.collide.getWidth() / 2.0f;
+        oEditorButton.pos.y -= oEditorButton.collide.getHeight() / 2.0f;
+        //Log.e("THING", "pos2: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
 
     }
 
@@ -319,6 +334,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     public void updateObjects(float dt)
     {
+        if(bEditor)
+            return;
+
         for(Object i : mObjects)
         {
             Obj o = (Obj) i;
@@ -460,11 +478,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             for(int y = 0; y < 2; y++)
             {
                 Obj oBlock = new Obj();
-                oBlock.scale = 0.25f;
+                oBlock.scale = blockScale;
                 oBlock.sImg = "drawable/block";
 
-                oBlock.pos.x = x * 0.15f;// - (2.5f * 0.25f);
-                oBlock.pos.y = y * 0.15f;// - (2.5f * 0.25f);
+                oBlock.pos.x = x * blockGridSize;// - (2.5f * 0.25f);
+                oBlock.pos.y = y * blockGridSize;// - (2.5f * 0.25f);
 
                 oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
                 oBlock.type = Obj.typeBlock;
@@ -479,15 +497,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     {
         pos.x -= screenWidth / 2.0f;
         pos.y -= screenHeight / 2.0f;
-        /*Rect rcCamera;
-	const float32 tan45_2 = tan(DEG2RAD*45/2);
-	const float32 fAspect = (float32)getWidth() / (float32)getHeight();
-	rcCamera.bottom = (tan45_2 * m_fDefCameraZ);
-	rcCamera.top = -(tan45_2 * m_fDefCameraZ);
-	rcCamera.left = rcCamera.bottom * fAspect;
-	rcCamera.right = rcCamera.top * fAspect;
-	rcCamera.offset(CameraPos.x, CameraPos.y);
-	return rcCamera;*/
 
         final float tan45 = (float) Math.tan(Math.PI/4.0);
         final float aspect = screenWidth / screenHeight;
@@ -504,8 +513,21 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         return ret;
     }
 
+    private Obj objectInside(Point p)
+    {
+        for(Object i : mObjects)
+        {
+            Obj o = (Obj) i;
+            if(o.isInside(p))
+                return o;
+        }
+        return null;
+    }
+
     long lastDown = 0;
+    Obj tappedOn = null;
     static final float paddleDistThreshold = 0.5f;
+    Obj clickAndDrag = null;
     public void onTouchEvent(MotionEvent e)
     {
         float x = e.getX();
@@ -518,39 +540,130 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         {
             case MotionEvent.ACTION_MOVE:
             {
-                long curTime = SystemClock.uptimeMillis();
-                long diffTime = curTime - lastDown;
-                float dt = (float) (diffTime) / 1000.0f;
-                if (ballLaunched || dt > tapTime)
+                if(bEditor)
                 {
-                    setAngle((float) (atan2(y, x)));
+                    //Log.e("ACTIONMOVE", "move");
+                    if(clickAndDrag != null)
+                    {
+                        //Log.e("ACTIONMOVE", "not null");
+                        clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
+                        clickAndDrag.pos.x = (int)(clickAndDrag.pos.x / blockGridSize);
+                        clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
+                        clickAndDrag.pos.y = (int)(clickAndDrag.pos.y / blockGridSize);
+                        clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
+                    }
+                }
+                else
+                {
+                    long curTime = SystemClock.uptimeMillis();
+                    long diffTime = curTime - lastDown;
+                    float dt = (float) (diffTime) / 1000.0f;
+                    if (ballLaunched || dt > tapTime)
+                        setAngle((float) (atan2(y, x)));
                 }
                 break;
             }
 
             case MotionEvent.ACTION_DOWN:
             {
-                float dist = (screenToGL(new Point(e.getX(), e.getY())).subtract(oPaddle.pos)).length();
-                if (dist < paddleDistThreshold)
-                    lastDown = SystemClock.uptimeMillis();
+                if(bEditor)
+                {
+                    //Log.e("ACTIONDOWN", "Pressing down");
+                    Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
+                    if(testClick != null)
+                    {
+                        //Log.e("ACTIONDOWN", "not null");
+                        if(testClick.type == Obj.typeButton && testClick == oEditorButton)
+                        {
+                            tappedOn = testClick;
+                            lastDown = SystemClock.uptimeMillis();
+                            break;
+                        }
+                        else if(testClick.type == Obj.typeBlock)
+                        {
+                            //Log.e("ACTIONDOWN", "drag");
+                            clickAndDrag = testClick;
+                        }
+                    }
+                }
                 else
-                    lastDown = 0;
-
+                {
+                    Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
+                    if(testClick != null)
+                    {
+                        if(testClick.type == Obj.typeButton && testClick == oEditorButton)
+                        {
+                            tappedOn = testClick;
+                            lastDown = SystemClock.uptimeMillis();
+                            break;
+                        }
+                    }
+                    float dist = (screenToGL(new Point(e.getX(), e.getY())).subtract(oPaddle.pos)).length();
+                    if (dist < paddleDistThreshold)
+                        lastDown = SystemClock.uptimeMillis();
+                    else
+                        lastDown = 0;
+                }
                 break;
             }
 
             case MotionEvent.ACTION_UP:
             {
-                long curTime = SystemClock.uptimeMillis();
-                long diffTime = curTime - lastDown;
-                float dt = (float) (diffTime) / 1000.0f;
-                //Log.e("THING", "TimeDown: " + dt);
-                if (dt <= tapTime && !ballLaunched)
+                if(bEditor)
                 {
-                    oBall.speed = ballSpeed;
-                    ballLaunched = true;
+                    //Log.e("ACTIONUP", "set to null");
+                    if(clickAndDrag != null)
+                    {
+                        //Log.e("ACTIONUP", "size: " + clickAndDrag.collide.getWidth() + "," + clickAndDrag.collide.getHeight());
+                        clickAndDrag.updateCollision();
+                        clickAndDrag = null;
+                    }
+                    Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
+                    if(testClick != null && testClick == oEditorButton && testClick == tappedOn)
+                    {
+                        long curTime = SystemClock.uptimeMillis();
+                        long diffTime = curTime - lastDown;
+                        float dt = (float) (diffTime) / 1000.0f;
+                        if (dt <= tapTime)
+                        {
+                            ballLaunched = false;
+                            bEditor = false;
+                            oEditorButton.q = getImage("drawable/editor");
+                            break;
+                        }
+                    }
                 }
-
+                else
+                {
+                    Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
+                    if(testClick != null && testClick == oEditorButton && testClick == tappedOn)
+                    {
+                        long curTime = SystemClock.uptimeMillis();
+                        long diffTime = curTime - lastDown;
+                        float dt = (float) (diffTime) / 1000.0f;
+                        if (dt <= tapTime)
+                        {
+                            bEditor = true;
+                            oEditorButton.q  = getImage("drawable/play");   //TODO Why doesn't this work?
+                            oBall.speed = 0;
+                            oBall.dir = 0;
+                            oBall.pos.y = -1.5f;
+                            oBall.pos.x = 0;
+                            mAngle = 90;
+                            //oPaddle.pos.y = paddleDist;
+                            //oPaddle.pos.x = 0;
+                            break;
+                        }
+                    }
+                    long curTime = SystemClock.uptimeMillis();
+                    long diffTime = curTime - lastDown;
+                    float dt = (float) (diffTime) / 1000.0f;
+                    if (dt <= tapTime && !ballLaunched)
+                    {
+                        oBall.speed = ballSpeed;
+                        ballLaunched = true;
+                    }
+                }
                 break;
             }
         }

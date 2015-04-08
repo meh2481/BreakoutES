@@ -15,6 +15,26 @@ public class Rect extends Shape
         w = h = 0;
     }
 
+    public float getWidth()
+    {
+        return w;
+    }
+
+    public float getHeight()
+    {
+        return h;
+    }
+
+    @Override
+    public boolean isInside(Point p)
+    {
+        //TODO: Rotated rect testing
+        return (p.x > pos.x - w/2.0f &&
+                p.x < pos.x + w/2.0f &&
+                p.y > pos.y - h/2.0f &&
+                p.y < pos.y + h/2.0f);
+    }
+
     public ContactManifold collide(Shape s)
     {
         ContactManifold cm = new ContactManifold();

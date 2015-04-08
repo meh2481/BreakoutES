@@ -13,6 +13,7 @@ public class Obj
     public static final int typeBlock = 1;
     public static final int typeBall = 2;
     public static final int typePaddle = 3;
+    public static final int typeButton = 4;
 
     public Quad q;
     public Point pos;
@@ -76,6 +77,11 @@ public class Obj
         pos.x += Math.cos(Point.TORAD * dir) * speed * dt;
         pos.y += Math.sin(Point.TORAD * dir) * speed * dt;
 
+        updateCollision();
+    }
+
+    public void updateCollision()
+    {
         if(collide != null)
         {
             collide.pos.x = pos.x;
@@ -134,6 +140,13 @@ public class Obj
             return cm;
         }
         return collide.collide(b.collide);
+    }
+
+    public boolean isInside(Point p)
+    {
+        if(collide != null)
+            return collide.isInside(p);
+        return false;
     }
 
 }
