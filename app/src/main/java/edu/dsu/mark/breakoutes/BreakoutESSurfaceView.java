@@ -34,21 +34,11 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent e) {
-        // MotionEvent reports input details from the touch screen
-        // and other input controls. In this case, you are only
-        // interested in events where the touch position changed.
+    public boolean onTouchEvent(MotionEvent e)
+    {
+        mRenderer.onTouchEvent(e, getWidth(), getHeight());
 
-        float x = e.getX();
-        float y = e.getY();
 
-        switch (e.getAction()) {
-            case MotionEvent.ACTION_MOVE:
-                y = (float) (y - getHeight() / 2.0);
-                x = (float) (x - getWidth() / 2.0);
-
-                mRenderer.setAngle((float) (atan2(y, x)));
-        }
         return true;
     }
 
