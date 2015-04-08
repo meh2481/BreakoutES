@@ -36,7 +36,7 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
     @Override
     public boolean onTouchEvent(MotionEvent e)
     {
-        mRenderer.onTouchEvent(e, getWidth(), getHeight());
+        mRenderer.onTouchEvent(e);
 
 
         return true;

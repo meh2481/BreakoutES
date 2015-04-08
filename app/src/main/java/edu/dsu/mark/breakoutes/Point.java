@@ -14,6 +14,7 @@ public class Point
     {
         x = y = 0.0f;
     }
+    public Point(float xp, float yp) {x = xp; y = yp;}
 
     public float length()
     {
@@ -51,5 +52,15 @@ public class Point
     {
         x *= amt;
         y *= amt;
+    }
+
+    public Point subtract(Point p)
+    {
+        Point ret = new Point();
+
+        ret.x = x - p.x;
+        ret.y = y - p.y;
+
+        return ret;
     }
 }

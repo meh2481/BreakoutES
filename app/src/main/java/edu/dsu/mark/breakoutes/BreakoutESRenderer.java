@@ -28,7 +28,7 @@ import static java.lang.Math.atan2;
 public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private static final String TAG = "BreakoutESRenderer";
-    private static final float tapTime = 0.15f;
+    private static final float tapTime = 0.25f;
     private Obj oBall;
     private Obj oPaddle;
     private int blocksAdded;
@@ -51,7 +51,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private float mAngle;
     private float mAngleDest;
 
-    //private float camX, camY, camZ;
+    private float camX, camY, camZ;
+    private float screenWidth, screenHeight;
     private boolean tiltMove;
     private Context mContext;
 
@@ -124,8 +125,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oPaddle.genCollision();
         oBall.genCollision(true);
 
-        //camX = camY = 0;
-        //camZ = -6;
+        camX = camY = 0;
+        camZ = -2;
         tiltMove = false;
     }
 
@@ -158,7 +159,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
 
         // Set the camera position (View matrix)
-        Matrix.setLookAtM(mViewMatrix, 0, 0, 0, -2, 0f, 0f, 0f, 0f, 1.0f, 0f);
+        Matrix.setLookAtM(mViewMatrix, 0, camX, camY, camZ, 0f, 0f, 0f, 0f, 1.0f, 0f);
 
         // Calculate the projection and view transformation
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
@@ -199,6 +200,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         // this projection matrix is applied to object coordinates
         // in the onDrawFrame() method
         Matrix.frustumM(mProjectionMatrix, 0, -ratio, ratio, -1, 1, 1, 7);
+
+        screenWidth = width;
+        screenHeight = height;
 
     }
 
@@ -471,14 +475,44 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         }
     }
 
+    private Point screenToGL(Point pos)
+    {
+        pos.x -= screenWidth / 2.0f;
+        pos.y -= screenHeight / 2.0f;
+        /*Rect rcCamera;
+	const float32 tan45_2 = tan(DEG2RAD*45/2);
+	const float32 fAspect = (float32)getWidth() / (float32)getHeight();
+	rcCamera.bottom = (tan45_2 * m_fDefCameraZ);
+	rcCamera.top = -(tan45_2 * m_fDefCameraZ);
+	rcCamera.left = rcCamera.bottom * fAspect;
+	rcCamera.right = rcCamera.top * fAspect;
+	rcCamera.offset(CameraPos.x, CameraPos.y);
+	return rcCamera;*/
+
+        final float tan45 = (float) Math.tan(Math.PI/4.0);
+        final float aspect = screenWidth / screenHeight;
+
+        Rect rcCam = new Rect();
+
+        rcCam.h = tan45 * camZ * 2;
+        rcCam.w = rcCam.h * aspect;
+
+        Point ret = new Point();
+        ret.x = pos.x * rcCam.w / screenWidth;
+        ret.y = pos.y * rcCam.h / screenHeight;
+
+        return ret;
+    }
+
     long lastDown = 0;
-    public void onTouchEvent(MotionEvent e, int w, int h)
+    static final float paddleDistThreshold = 0.5f;
+    public void onTouchEvent(MotionEvent e)
     {
         float x = e.getX();
         float y = e.getY();
 
-        y = (float) (y - h / 2.0);
-        x = (float) (x - w / 2.0);
+        y = (float) (y - screenHeight / 2.0);
+        x = (float) (x - screenWidth / 2.0);
 
         switch (e.getAction())
         {
@@ -487,39 +521,31 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                 long curTime = SystemClock.uptimeMillis();
                 long diffTime = curTime - lastDown;
                 float dt = (float) (diffTime) / 1000.0f;
-                if(ballLaunched || dt > tapTime)
+                if (ballLaunched || dt > tapTime)
                 {
                     setAngle((float) (atan2(y, x)));
                 }
-                //else
-                //{
-                    //oBall.pos.x = -1.5f;
-                    //oBall.pos.y = 0;
-                    //oBall.dir = 0;
-                    //Log.e("THING", "Pos: " + oBall.pos.x + "," + oBall.pos.y + " dir: " + oBall.dir);
-                //}
-
-
                 break;
             }
+
             case MotionEvent.ACTION_DOWN:
             {
-                lastDown = SystemClock.uptimeMillis();
-                /*if(!ballLaunched && Math.sqrt(x*x+y*y) <= Math.min(w,h) / 4.0)
-                {
-                    oBall.speed = ballSpeed;
-                    ballLaunched = true;
-                }*/
+                float dist = (screenToGL(new Point(e.getX(), e.getY())).subtract(oPaddle.pos)).length();
+                if (dist < paddleDistThreshold)
+                    lastDown = SystemClock.uptimeMillis();
+                else
+                    lastDown = 0;
 
                 break;
             }
+
             case MotionEvent.ACTION_UP:
             {
                 long curTime = SystemClock.uptimeMillis();
                 long diffTime = curTime - lastDown;
                 float dt = (float) (diffTime) / 1000.0f;
                 //Log.e("THING", "TimeDown: " + dt);
-                if(dt <= tapTime && !ballLaunched)
+                if (dt <= tapTime && !ballLaunched)
                 {
                     oBall.speed = ballSpeed;
                     ballLaunched = true;
