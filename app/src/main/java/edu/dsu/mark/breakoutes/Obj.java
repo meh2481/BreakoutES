@@ -21,7 +21,7 @@ public class Obj
     public float angle; //Rotation to draw at
     public float scale; //scale factor
 
-    private float r, g, b, a;
+    public float r, g, b, a;
 
     public float dir, speed;   //Used to update movement
 
@@ -96,6 +96,14 @@ public class Obj
         g = cg;
         b = cb;
         a = ca;
+    }
+
+    public void setColor(float cr, float cg, float cb)
+    {
+        r = cr;
+        g = cg;
+        b = cb;
+        a = 1;
     }
 
     public void genCollision()

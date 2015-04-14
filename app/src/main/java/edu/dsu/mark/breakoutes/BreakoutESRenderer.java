@@ -36,6 +36,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private Obj oPaddle;
     private Obj oEditorButton;
     private Obj oAddBlockButton;
+    private Obj oRSlider, oGSlider, oBSlider;
+    private Obj lastDragged = null;
 
     public LinkedBlockingQueue<MotionEvent> motEvents;
 
@@ -49,6 +51,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
     private static final float ballSpeed = 2.0f;
+    private static final float sliderStartX = -2.1f;
+    private static final float sliderEndX = -2.6f;
 
     private long lastTime;
 
@@ -90,26 +94,54 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         Obj oWalls = new Obj();
         oEditorButton = new Obj();
         oAddBlockButton = new Obj();
-        oAddBlockButton.pos.x = 2;
-        oAddBlockButton.pos.y = 1;
+        //oAddBlockButton.pos.x = 2;
+        //oAddBlockButton.pos.y = 1;
+
+        oRSlider = new Obj();
+        oGSlider = new Obj();
+        oBSlider = new Obj();
+        oRSlider.scale = 0.5f;
+        oGSlider.scale = 0.5f;
+        oBSlider.scale = 0.5f;
+        oRSlider.setColor(1, 0, 0);
+        oGSlider.setColor(0, 1, 0);
+        oBSlider.setColor(0, 0, 1);
+        oRSlider.pos.x = sliderStartX;
+        oRSlider.pos.y = 1.75f;
+        oGSlider.pos.x = sliderStartX;
+        oGSlider.pos.y = 1.25f;
+        oBSlider.pos.x = sliderStartX;
+        oBSlider.pos.y = 0.75f;
 
         oWalls.sImg = "drawable/walls";
         oPaddle.sImg = "drawable/paddle";
         oBall.sImg = "drawable/pinball";
         oEditorButton.sImg = "drawable/editor";
-        oAddBlockButton.sImg = "drawable/block";
+        oAddBlockButton.sImg = "drawable/blockadd";
+        oRSlider.sImg = "drawable/block";
+        oGSlider.sImg = "drawable/block";
+        oBSlider.sImg = "drawable/block";
 
         oBall.type = Obj.typeBall;
         oPaddle.type = Obj.typePaddle;
         oEditorButton.type = Obj.typeButton;
         oAddBlockButton.type = Obj.typeButton;
         oAddBlockButton.active = false;
+        oRSlider.type = Obj.typeButton;
+        oGSlider.type = Obj.typeButton;
+        oBSlider.type = Obj.typeButton;
+        oRSlider.active = false;
+        oGSlider.active = false;
+        oBSlider.active = false;
 
         mObjects.add(oWalls);
         mObjects.add(oPaddle);
         mObjects.add(oBall);
         mObjects.add(oEditorButton);
         mObjects.add(oAddBlockButton);
+        mObjects.add(oRSlider);
+        mObjects.add(oGSlider);
+        mObjects.add(oBSlider);
 
         resetLevel();
 
@@ -151,6 +183,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oBall.genCollision(true);
         oEditorButton.genCollision();
         oAddBlockButton.genCollision();
+        oRSlider.genCollision();
+        oGSlider.genCollision();
+        oBSlider.genCollision();
 
         camX = camY = 0;
         camZ = -2;
@@ -236,7 +271,14 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         //Log.e("THING", "pos: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
         oEditorButton.pos.x -= oEditorButton.collide.getWidth() / 2.0f;
         oEditorButton.pos.y -= oEditorButton.collide.getHeight() / 2.0f;
+        oAddBlockButton.pos.x = oEditorButton.pos.x;
+        oAddBlockButton.pos.y = oEditorButton.pos.y - oEditorButton.collide.getHeight() / 2.0f - oAddBlockButton.collide.getHeight() / 2.0f - 0.3f;
         //Log.e("THING", "pos2: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
+        oEditorButton.updateCollision();
+        oAddBlockButton.updateCollision();
+        oRSlider.updateCollision();
+        oGSlider.updateCollision();
+        oBSlider.updateCollision();
 
     }
 
@@ -581,12 +623,39 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     //Log.e("ACTIONMOVE", "move");
                     if(clickAndDrag != null)
                     {
-                        //Log.e("ACTIONMOVE", "not null");
-                        clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
-                        clickAndDrag.pos.x = (int)(clickAndDrag.pos.x / blockGridSize);
-                        clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
-                        clickAndDrag.pos.y = (int)(clickAndDrag.pos.y / blockGridSize);
-                        clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
+                        if(clickAndDrag.type == Obj.typeBlock)
+                        {
+                            //Log.e("ACTIONMOVE", "not null");
+                            clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
+                            clickAndDrag.pos.x = (int) (clickAndDrag.pos.x / blockGridSize);
+                            clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
+                            clickAndDrag.pos.y = (int) (clickAndDrag.pos.y / blockGridSize);
+                            clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
+                        }
+                        else    //Slider
+                        {
+                            Point newPos = screenToGL(new Point(e.getX(), e.getY()));
+                            Log.e("ACTIONMOVE", newPos.x + "," + newPos.y);
+                            clickAndDrag.pos.x = Math.max(sliderEndX, Math.min(newPos.x, sliderStartX));
+                            if(clickAndDrag == oRSlider)
+                            {
+                                oAddBlockButton.r = (sliderStartX - clickAndDrag.pos.x)*2;
+                                if(lastDragged != null)
+                                    lastDragged.r = oAddBlockButton.r;
+                            }
+                            else if(clickAndDrag == oGSlider)
+                            {
+                                oAddBlockButton.g = (sliderStartX - clickAndDrag.pos.x)*2;
+                                if(lastDragged != null)
+                                    lastDragged.g = oAddBlockButton.g;
+                            }
+                            else if(clickAndDrag == oBSlider)
+                            {
+                                oAddBlockButton.b = (sliderStartX - clickAndDrag.pos.x)*2;
+                                if(lastDragged != null)
+                                    lastDragged.b = oAddBlockButton.b;
+                            }
+                        }
                     }
                 }
                 else
@@ -629,7 +698,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                                 oBlock.pos.x = x * blockGridSize;// - (2.5f * 0.25f);
                                 oBlock.pos.y = y * blockGridSize;// - (2.5f * 0.25f);
 
-                                oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
+                                //oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
+                                oBlock.setColor(oAddBlockButton.r, oAddBlockButton.g, oAddBlockButton.b);
                                 oBlock.type = Obj.typeBlock;
                                 mObjects.add(oBlock);
                                 mBlocks.add(oBlock);
@@ -637,6 +707,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                                 blocksAdded++;
 
                                 clickAndDrag = oBlock;
+                                lastDragged = clickAndDrag;
                                 clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
                                 clickAndDrag.pos.x = (int)(clickAndDrag.pos.x / blockGridSize);
                                 clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
@@ -647,12 +718,31 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                                 //mBlocks.add(o);
                                 //mObjects.add(o);
                             }
+                            else if(testClick == oRSlider || testClick == oGSlider || testClick == oBSlider)
+                            {
+                                clickAndDrag = testClick;
+                                //Log.e("ACTIONDOWN", "click on slider");
+                                break;
+                            }
                         }
                         else if(testClick.type == Obj.typeBlock)
                         {
                             //Log.e("ACTIONDOWN", "drag");
                             clickAndDrag = testClick;
+                            lastDragged = testClick;
+                            oAddBlockButton.setColor(testClick.r, testClick.g, testClick.b);
+                            oRSlider.pos.x = sliderStartX - (testClick.r / 2.0f);
+                            oGSlider.pos.x = sliderStartX - (testClick.g / 2.0f);
+                            oBSlider.pos.x = sliderStartX - (testClick.b / 2.0f);
+                            oRSlider.updateCollision();
+                            oGSlider.updateCollision();
+                            oBSlider.updateCollision();
                         }
+                    }
+                    else if(screenToGL(new Point(e.getX(), e.getY())).length() <= paddleDist)
+                    {
+                        //Tapping on nothing inside of the circle, reset colorizing
+                        lastDragged = null;
                     }
                 }
                 else
@@ -684,14 +774,22 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     if(clickAndDrag != null)
                     {
                         //Log.e("ACTIONUP", "size: " + clickAndDrag.collide.getWidth() + "," + clickAndDrag.collide.getHeight());
-                        clickAndDrag.updateCollision();
-                        //Test and see if outside playable area, if so delete
-                        if(clickAndDrag.pos.length() > paddleDist)
+                        if(clickAndDrag.type == Obj.typeBlock)
                         {
-                            mObjects.remove(clickAndDrag);
-                            mBlocks.remove(clickAndDrag);
-                            blocksAdded--;
-                            
+                            clickAndDrag.updateCollision();
+                            //Test and see if outside playable area, if so delete
+                            if (clickAndDrag.pos.length() > paddleDist)
+                            {
+                                mObjects.remove(clickAndDrag);
+                                mBlocks.remove(clickAndDrag);
+                                blocksAdded--;
+
+                            }
+                        }
+                        else
+                        {
+                            clickAndDrag.updateCollision();
+                            //Log.e("ACTIONUP", "Release slider");
                         }
                         clickAndDrag = null;
                         break;
@@ -707,6 +805,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                             ballLaunched = false;
                             bEditor = false;
                             oAddBlockButton.active = false;
+                            oRSlider.active = false;
+                            oGSlider.active = false;
+                            oBSlider.active = false;
+
                             oEditorButton.sImg = "drawable/editor";
                             oEditorButton.q = getImage(oEditorButton.sImg);
                             //oEditorButton.genCollision();
@@ -726,6 +828,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         {
                             bEditor = true;
                             oAddBlockButton.active = true;
+                            oRSlider.active = true;
+                            oGSlider.active = true;
+                            oBSlider.active = true;
                             oAddBlockButton.updateCollision();
                             oEditorButton.sImg = "drawable/play";
                             oEditorButton.q  = getImage(oEditorButton.sImg);   //TODO Why doesn't this work?
