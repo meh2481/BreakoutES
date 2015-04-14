@@ -53,8 +53,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
     private static final float ballSpeed = 2.0f;
-    private static final float sliderStartX = -2.1f;
-    private static final float sliderEndX = -2.8f;
+    private static float sliderStartX = -2.1f;
+    private static float sliderEndX = -2.8f;
 
     private long lastTime;
 
@@ -286,9 +286,20 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oEditorButton.pos.y -= oEditorButton.collide.getHeight() / 2.0f;
         oAddBlockButton.pos.x = oEditorButton.pos.x;
         oAddBlockButton.pos.y = oEditorButton.pos.y - oEditorButton.collide.getHeight() / 2.0f - oAddBlockButton.collide.getHeight() / 2.0f - 0.3f;
-        //Log.e("THING", "pos2: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
+
+        oRSlider.pos.y = oAddBlockButton.pos.y - oAddBlockButton.collide.getHeight() / 2.0f - oRSlider.collide.getHeight() / 2.0f - 0.3f;
+        oBSlider.pos.y = oRSlider.pos.y - 0.5f;
+        oGSlider.pos.y = oBSlider.pos.y - 0.5f;
+
+        float sliderLen = Math.abs(sliderStartX - sliderEndX);
+        sliderStartX = oAddBlockButton.pos.x - (sliderLen / 2.0f);
+        sliderEndX = sliderStartX + sliderLen;
+
         oEditorButton.updateCollision();
         oAddBlockButton.updateCollision();
+        oRSlider.pos.x = sliderStartX;
+        oGSlider.pos.x = sliderStartX;
+        oBSlider.pos.x = sliderStartX;
         oRSlider.updateCollision();
         oGSlider.updateCollision();
         oBSlider.updateCollision();
@@ -649,22 +660,22 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         {
                             Point newPos = screenToGL(new Point(e.getX(), e.getY()));
                             Log.e("ACTIONMOVE", newPos.x + "," + newPos.y);
-                            clickAndDrag.pos.x = Math.max(sliderEndX, Math.min(newPos.x, sliderStartX));
+                            clickAndDrag.pos.x = Math.min(sliderEndX, Math.max(newPos.x, sliderStartX));
                             if(clickAndDrag == oRSlider)
                             {
-                                oAddBlockButton.r = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
+                                oAddBlockButton.r = (sliderEndX - clickAndDrag.pos.x)/Math.abs(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.r = oAddBlockButton.r;
                             }
                             else if(clickAndDrag == oGSlider)
                             {
-                                oAddBlockButton.g = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
+                                oAddBlockButton.g = (sliderEndX - clickAndDrag.pos.x)/Math.abs(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.g = oAddBlockButton.g;
                             }
                             else if(clickAndDrag == oBSlider)
                             {
-                                oAddBlockButton.b = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
+                                oAddBlockButton.b = (sliderEndX - clickAndDrag.pos.x)/Math.abs(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.b = oAddBlockButton.b;
                             }
@@ -744,9 +755,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                             clickAndDrag = testClick;
                             lastDragged = testClick;
                             oAddBlockButton.setColor(testClick.r, testClick.g, testClick.b);
-                            oRSlider.pos.x = sliderStartX - (testClick.r * (sliderStartX-sliderEndX));
-                            oGSlider.pos.x = sliderStartX - (testClick.g * (sliderStartX-sliderEndX));
-                            oBSlider.pos.x = sliderStartX - (testClick.b * (sliderStartX-sliderEndX));
+                            oRSlider.pos.x = sliderEndX - (testClick.r * (sliderEndX-sliderStartX));
+                            oGSlider.pos.x = sliderEndX - (testClick.g * (sliderEndX-sliderStartX));
+                            oBSlider.pos.x = sliderEndX - (testClick.b * (sliderEndX-sliderStartX));
                             oRSlider.updateCollision();
                             oGSlider.updateCollision();
                             oBSlider.updateCollision();
