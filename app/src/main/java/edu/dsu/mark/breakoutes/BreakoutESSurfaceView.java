@@ -25,9 +25,9 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
         setEGLContextClientVersion(2);
 
         // Set the Renderer for drawing on the GLSurfaceView
-        mRenderer = new BreakoutESRenderer();
+        mRenderer = new BreakoutESRenderer(context);
         setRenderer(mRenderer);
-        mRenderer.setContext(context);
+        //mRenderer.setContext(context);
 
         // Render the view only when there is a change in the drawing data
         //setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);

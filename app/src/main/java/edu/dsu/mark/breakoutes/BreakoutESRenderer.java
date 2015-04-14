@@ -1,13 +1,21 @@
 package edu.dsu.mark.breakoutes;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.view.MotionEvent;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 
@@ -52,7 +60,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private LinkedList<Obj> mBlocks;
 
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
-    private static final float ballSpeed = 2.0f;
+    private static final float ballSpeed = 3.0f;
     private static float sliderStartX = -2.1f;
     private static float sliderEndX = -2.8f;
 
@@ -78,8 +86,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         mContext = c;
     }
 
-    public BreakoutESRenderer()
+    public BreakoutESRenderer(Context c)
     {
+        mContext = c;
         mObjects = new LinkedList<>();
         mBlocks = new LinkedList<>();
         motEvents = new LinkedBlockingQueue<>();
@@ -559,11 +568,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     {
         if(mImages.containsKey(sImg))
         {
-            Log.e("BREAKOUTES", "getImage() already has " + sImg);
+            //Log.e("BREAKOUTES", "getImage() already has " + sImg);
             return mImages.get(sImg);
         }
 
-        Log.e("BREAKOUTES", "getImage() creating quad " + sImg);
+        //Log.e("BREAKOUTES", "getImage() creating quad " + sImg);
         Quad q = new Quad();
         q.loadImage(sImg, mContext);
         mImages.put(sImg, q);
@@ -575,7 +584,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         blocksAdded = 0;
         ballLaunched = false;
         oBall.speed = 0;
-        for(int x = 0; x < 2; x++)
+        levelLoad("level1.sav");
+        /*for(int x = 0; x < 2; x++)
         {
             for(int y = 0; y < 2; y++)
             {
@@ -592,7 +602,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                 mBlocks.add(oBlock);
                 blocksAdded++;
             }
-        }
+        }*/
     }
 
     private Point screenToGL(Point pos)
@@ -650,11 +660,26 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         if(clickAndDrag.type == Obj.typeBlock)
                         {
                             //Log.e("ACTIONMOVE", "not null");
-                            clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
-                            clickAndDrag.pos.x = (int) (clickAndDrag.pos.x / blockGridSize);
-                            clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
-                            clickAndDrag.pos.y = (int) (clickAndDrag.pos.y / blockGridSize);
-                            clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
+                            Point pos = screenToGL(new Point(e.getX(), e.getY()));
+                            pos.x = (int) (pos.x / blockGridSize);
+                            pos.x = pos.x * blockGridSize;
+                            pos.y = (int) (pos.y / blockGridSize);
+                            pos.y = pos.y * blockGridSize;
+
+                            for(Object i : mBlocks)
+                            {
+                                Obj o = (Obj) i;
+                                if(o == clickAndDrag)
+                                    continue;
+
+                                //Don't set block to here if there's already a block here (no overlapping blocks)
+                                if(o.pos.x == pos.x && o.pos.y == pos.y)
+                                {
+                                    pos = clickAndDrag.pos;
+                                    break;
+                                }
+                            }
+                            clickAndDrag.pos = pos;
                         }
                         else    //Slider
                         {
@@ -833,6 +858,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                             oGSlider.active = false;
                             oBSlider.active = false;
 
+                            //Save level
+                            levelSave();
+
                             oEditorButton.sImg = "drawable/editor";
                             oEditorButton.q = getImage(oEditorButton.sImg);
                             //oEditorButton.genCollision();
@@ -880,6 +908,96 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                 }
                 break;
             }
+        }
+    }
+
+    public void levelSave()
+    {
+        String filename = "level1.sav";
+        //File file = new File(mContext.getFilesDir(), filename);
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
+        Log.e("LEVELSAVE", "Saving path: " + file.getAbsolutePath());
+        //if (!file.mkdirs())
+        //{
+        //    Log.e("LEVELSAVE", "Directory not created");
+        //}
+        FileOutputStream outputStream;
+        try
+        {
+            outputStream = new FileOutputStream(file);
+            String s = "";
+            s += mBlocks.size() + " ";
+            for(Object i : mBlocks)
+            {
+                Obj o = (Obj) i;
+
+                s += o.pos.x + " " + o.pos.y + " " + o.r + " " + o.g + " " + o.b + " ";
+                outputStream.write(s.getBytes());
+                s = "";
+            }
+            outputStream.close();
+        } catch (java.io.IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        //Broadcast so it shows up in Windows Explorer...
+        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+        intent.setData(Uri.fromFile(file));
+        mContext.sendBroadcast(intent);
+
+        //Log.e("LEVELSAVE", filename);
+    }
+
+    public void levelLoad(String sFilename)
+    {
+        String s = "0 0";
+
+        //File file = new File(mContext.getFilesDir(), sFilename);
+        //Log.e("LEVELLOAD", "Path: " + file.getAbsolutePath());
+        //FileInputStream inputStream;
+        try
+        {
+            InputStream inputStream = mContext.getResources().openRawResource(R.raw.level1);//inputStream = new FileInputStream(file);
+            int sz = inputStream.available();
+            byte[] inputStr = new byte[sz];
+            inputStream.read(inputStr, 0, sz);
+            s = new String(inputStr, "UTF-8");
+            /*s += mBlocks.size() + " ";
+            for(Object i : mBlocks)
+            {
+                Obj o = (Obj) i;
+
+                s += o.pos.x + " " + o.pos.y + " " + o.r + " " + o.g + " " + o.b + " ";
+                outputStream.write(s.getBytes());
+                s = "";
+            }*/
+            inputStream.close();
+        } catch (java.io.IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        String[] splitValues = s.split("\\s+");
+        int curNum = 0;
+        int numBlocks = Integer.parseInt(splitValues[curNum++]);
+        for(int i = 0; i < numBlocks; i++)
+        {
+            Obj oBlock = new Obj();
+            oBlock.scale = blockScale;
+            oBlock.sImg = "drawable/block";
+
+            oBlock.pos.x = Float.parseFloat(splitValues[curNum++]);//x * blockGridSize;// - (2.5f * 0.25f);
+            oBlock.pos.y = Float.parseFloat(splitValues[curNum++]);//y * blockGridSize;// - (2.5f * 0.25f);
+
+            oBlock.setColor(Float.parseFloat(splitValues[curNum++]),
+                            Float.parseFloat(splitValues[curNum++]),
+                            Float.parseFloat(splitValues[curNum++]));
+            oBlock.type = Obj.typeBlock;
+            mObjects.add(oBlock);
+            mBlocks.add(oBlock);
+            blocksAdded++;
+
         }
     }
 
