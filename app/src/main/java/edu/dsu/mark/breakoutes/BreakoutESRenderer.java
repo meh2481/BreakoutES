@@ -39,6 +39,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private Obj oRSlider, oGSlider, oBSlider;
     private Obj lastDragged = null;
 
+    private Line drawLine;
+
     public LinkedBlockingQueue<MotionEvent> motEvents;
 
     private int blocksAdded;
@@ -52,7 +54,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
     private static final float ballSpeed = 2.0f;
     private static final float sliderStartX = -2.1f;
-    private static final float sliderEndX = -2.6f;
+    private static final float sliderEndX = -2.8f;
 
     private long lastTime;
 
@@ -100,17 +102,14 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oRSlider = new Obj();
         oGSlider = new Obj();
         oBSlider = new Obj();
-        oRSlider.scale = 0.5f;
-        oGSlider.scale = 0.5f;
-        oBSlider.scale = 0.5f;
         oRSlider.setColor(1, 0, 0);
         oGSlider.setColor(0, 1, 0);
         oBSlider.setColor(0, 0, 1);
-        oRSlider.pos.x = sliderStartX;
+        oRSlider.pos.x = sliderEndX;
         oRSlider.pos.y = 1.75f;
-        oGSlider.pos.x = sliderStartX;
+        oGSlider.pos.x = sliderEndX;
         oGSlider.pos.y = 1.25f;
-        oBSlider.pos.x = sliderStartX;
+        oBSlider.pos.x = sliderEndX;
         oBSlider.pos.y = 0.75f;
 
         oWalls.sImg = "drawable/walls";
@@ -118,9 +117,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oBall.sImg = "drawable/pinball";
         oEditorButton.sImg = "drawable/editor";
         oAddBlockButton.sImg = "drawable/blockadd";
-        oRSlider.sImg = "drawable/block";
-        oGSlider.sImg = "drawable/block";
-        oBSlider.sImg = "drawable/block";
+        oRSlider.sImg = "drawable/slider";
+        oGSlider.sImg = "drawable/slider";
+        oBSlider.sImg = "drawable/slider";
 
         oBall.type = Obj.typeBall;
         oPaddle.type = Obj.typePaddle;
@@ -190,6 +189,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         camX = camY = 0;
         camZ = -2;
         tiltMove = false;
+
+        drawLine = new Line();
     }
 
     @Override
@@ -235,6 +236,18 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             oBall.pos.x = (float) (oPaddle.pos.x + (Math.cos(Point.TORAD * mAngle) * 0.145));
             oBall.pos.y = (float) (oPaddle.pos.y + (Math.sin(Point.TORAD * mAngle) * 0.145));
             oBall.dir = mAngle;
+        }
+
+        //Draw lines for sliders
+        if(bEditor)
+        {
+            drawLine.setColor(1,1,1);
+            drawLine.setVerts(sliderStartX, oRSlider.pos.y, sliderEndX, oRSlider.pos.y);
+            drawLine.draw(mMVPMatrix);
+            drawLine.setVerts(sliderStartX, oGSlider.pos.y, sliderEndX, oGSlider.pos.y);
+            drawLine.draw(mMVPMatrix);
+            drawLine.setVerts(sliderStartX, oBSlider.pos.y, sliderEndX, oBSlider.pos.y);
+            drawLine.draw(mMVPMatrix);
         }
 
         //Draw objects
@@ -639,19 +652,19 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                             clickAndDrag.pos.x = Math.max(sliderEndX, Math.min(newPos.x, sliderStartX));
                             if(clickAndDrag == oRSlider)
                             {
-                                oAddBlockButton.r = (sliderStartX - clickAndDrag.pos.x)*2;
+                                oAddBlockButton.r = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.r = oAddBlockButton.r;
                             }
                             else if(clickAndDrag == oGSlider)
                             {
-                                oAddBlockButton.g = (sliderStartX - clickAndDrag.pos.x)*2;
+                                oAddBlockButton.g = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.g = oAddBlockButton.g;
                             }
                             else if(clickAndDrag == oBSlider)
                             {
-                                oAddBlockButton.b = (sliderStartX - clickAndDrag.pos.x)*2;
+                                oAddBlockButton.b = (sliderStartX - clickAndDrag.pos.x)/(sliderStartX-sliderEndX);
                                 if(lastDragged != null)
                                     lastDragged.b = oAddBlockButton.b;
                             }
@@ -731,9 +744,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                             clickAndDrag = testClick;
                             lastDragged = testClick;
                             oAddBlockButton.setColor(testClick.r, testClick.g, testClick.b);
-                            oRSlider.pos.x = sliderStartX - (testClick.r / 2.0f);
-                            oGSlider.pos.x = sliderStartX - (testClick.g / 2.0f);
-                            oBSlider.pos.x = sliderStartX - (testClick.b / 2.0f);
+                            oRSlider.pos.x = sliderStartX - (testClick.r * (sliderStartX-sliderEndX));
+                            oGSlider.pos.x = sliderStartX - (testClick.g * (sliderStartX-sliderEndX));
+                            oBSlider.pos.x = sliderStartX - (testClick.b * (sliderStartX-sliderEndX));
                             oRSlider.updateCollision();
                             oGSlider.updateCollision();
                             oBSlider.updateCollision();
