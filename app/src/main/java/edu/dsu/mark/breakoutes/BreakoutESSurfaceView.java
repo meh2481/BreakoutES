@@ -36,7 +36,15 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
     @Override
     public boolean onTouchEvent(MotionEvent e)
     {
-        mRenderer.onTouchEvent(e);
+        //TODO This is asynchronous!!!
+        try
+        {
+            mRenderer.motEvents.put(e);
+        } catch (InterruptedException e1)
+        {
+            e1.printStackTrace();
+        }
+        //mRenderer.onTouchEvent(e);
 
 
         return true;

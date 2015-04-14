@@ -15,6 +15,7 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static java.lang.Math.atan2;
+import java.util.concurrent.*;
 
 /**
  * Provides drawing instructions for a GLSurfaceView object. This class
@@ -34,6 +35,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private Obj oBall;
     private Obj oPaddle;
     private Obj oEditorButton;
+    private Obj oAddBlockButton;
+
+    public LinkedBlockingQueue<MotionEvent> motEvents;
+
     private int blocksAdded;
     private boolean bEditor = false;
     //Quad qPaddle;
@@ -71,6 +76,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     {
         mObjects = new LinkedList<>();
         mBlocks = new LinkedList<>();
+        motEvents = new LinkedBlockingQueue<>();
         lastTime = SystemClock.uptimeMillis();
 
         oBall = new Obj();
@@ -83,20 +89,27 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
         Obj oWalls = new Obj();
         oEditorButton = new Obj();
+        oAddBlockButton = new Obj();
+        oAddBlockButton.pos.x = 2;
+        oAddBlockButton.pos.y = 1;
 
         oWalls.sImg = "drawable/walls";
         oPaddle.sImg = "drawable/paddle";
         oBall.sImg = "drawable/pinball";
         oEditorButton.sImg = "drawable/editor";
+        oAddBlockButton.sImg = "drawable/block";
 
         oBall.type = Obj.typeBall;
         oPaddle.type = Obj.typePaddle;
         oEditorButton.type = Obj.typeButton;
+        oAddBlockButton.type = Obj.typeButton;
+        oAddBlockButton.active = false;
 
         mObjects.add(oWalls);
         mObjects.add(oPaddle);
         mObjects.add(oBall);
         mObjects.add(oEditorButton);
+        mObjects.add(oAddBlockButton);
 
         resetLevel();
 
@@ -105,6 +118,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config)
     {
+        Log.e("BREAKOUTES", "onSurfaceCreated()");
         // Set the background frame color
         GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
@@ -122,6 +136,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             Obj o = (Obj) i;
             o.q = getImage(o.sImg);
         }
+        getImage("drawable/play");
+        getImage("drawable/editor");
+        getImage("drawable/block");
 
         for(Object i : mBlocks)
         {
@@ -133,6 +150,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oPaddle.genCollision();
         oBall.genCollision(true);
         oEditorButton.genCollision();
+        oAddBlockButton.genCollision();
 
         camX = camY = 0;
         camZ = -2;
@@ -200,6 +218,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceChanged(GL10 unused, int width, int height)
     {
+        Log.e("BREAKOUTES", "onSurfaceChanged()");
         // Adjust the viewport based on geometry changes,
         // such as screen rotation
         GLES20.glViewport(0, 0, width, height);
@@ -334,8 +353,20 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     public void updateObjects(float dt)
     {
+        //Process touch events synchronously
+        while(true)
+        {
+            MotionEvent e = motEvents.poll();
+            if(e == null)
+                break;
+            onTouchEvent(e);
+        }
+
         if(bEditor)
+        {
+            //oEditorButton.q  = getImage(oEditorButton.sImg);
             return;
+        }
 
         for(Object i : mObjects)
         {
@@ -461,7 +492,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private Quad getImage(String sImg)
     {
         if(mImages.containsKey(sImg))
+        {
+            Log.e("BREAKOUTES", "getImage() already has " + sImg);
             return mImages.get(sImg);
+        }
+
+        Log.e("BREAKOUTES", "getImage() creating quad " + sImg);
         Quad q = new Quad();
         q.loadImage(sImg, mContext);
         mImages.put(sImg, q);
@@ -573,11 +609,44 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     if(testClick != null)
                     {
                         //Log.e("ACTIONDOWN", "not null");
-                        if(testClick.type == Obj.typeButton && testClick == oEditorButton)
+                        if(testClick.type == Obj.typeButton)
                         {
-                            tappedOn = testClick;
-                            lastDown = SystemClock.uptimeMillis();
-                            break;
+                            if(testClick == oEditorButton)
+                            {
+                                tappedOn = testClick;
+                                lastDown = SystemClock.uptimeMillis();
+                                break;
+                            }
+                            else if(testClick == oAddBlockButton)
+                            {
+                                //Obj o = new Obj();
+
+                                Obj oBlock = new Obj();
+                                oBlock.scale = blockScale;
+                                oBlock.sImg = "drawable/block";
+                                oBlock.q = getImage("drawable/block");
+
+                                oBlock.pos.x = x * blockGridSize;// - (2.5f * 0.25f);
+                                oBlock.pos.y = y * blockGridSize;// - (2.5f * 0.25f);
+
+                                oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
+                                oBlock.type = Obj.typeBlock;
+                                mObjects.add(oBlock);
+                                mBlocks.add(oBlock);
+                                oBlock.genCollision();
+                                blocksAdded++;
+
+                                clickAndDrag = oBlock;
+                                clickAndDrag.pos = screenToGL(new Point(e.getX(), e.getY()));
+                                clickAndDrag.pos.x = (int)(clickAndDrag.pos.x / blockGridSize);
+                                clickAndDrag.pos.x = clickAndDrag.pos.x * blockGridSize;
+                                clickAndDrag.pos.y = (int)(clickAndDrag.pos.y / blockGridSize);
+                                clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
+                                break;
+
+                                //mBlocks.add(o);
+                                //mObjects.add(o);
+                            }
                         }
                         else if(testClick.type == Obj.typeBlock)
                         {
@@ -616,7 +685,16 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     {
                         //Log.e("ACTIONUP", "size: " + clickAndDrag.collide.getWidth() + "," + clickAndDrag.collide.getHeight());
                         clickAndDrag.updateCollision();
+                        //Test and see if outside playable area, if so delete
+                        if(clickAndDrag.pos.length() > paddleDist)
+                        {
+                            mObjects.remove(clickAndDrag);
+                            mBlocks.remove(clickAndDrag);
+                            blocksAdded--;
+                            
+                        }
                         clickAndDrag = null;
+                        break;
                     }
                     Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
                     if(testClick != null && testClick == oEditorButton && testClick == tappedOn)
@@ -628,7 +706,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         {
                             ballLaunched = false;
                             bEditor = false;
-                            oEditorButton.q = getImage("drawable/editor");
+                            oAddBlockButton.active = false;
+                            oEditorButton.sImg = "drawable/editor";
+                            oEditorButton.q = getImage(oEditorButton.sImg);
+                            //oEditorButton.genCollision();
                             break;
                         }
                     }
@@ -644,7 +725,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         if (dt <= tapTime)
                         {
                             bEditor = true;
-                            oEditorButton.q  = getImage("drawable/play");   //TODO Why doesn't this work?
+                            oAddBlockButton.active = true;
+                            oAddBlockButton.updateCollision();
+                            oEditorButton.sImg = "drawable/play";
+                            oEditorButton.q  = getImage(oEditorButton.sImg);   //TODO Why doesn't this work?
+                            //oEditorButton.genCollision();
                             oBall.speed = 0;
                             oBall.dir = 0;
                             oBall.pos.y = -1.5f;
