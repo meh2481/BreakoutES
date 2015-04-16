@@ -34,8 +34,9 @@ import java.util.concurrent.*;
  *   <li>{@link android.opengl.GLSurfaceView.Renderer#onSurfaceChanged}</li>
  * </ul>
  */
-public class BreakoutESRenderer implements GLSurfaceView.Renderer {
-
+public class BreakoutESRenderer implements GLSurfaceView.Renderer
+{
+    private static final boolean bDebug = true; //TODO false
     private static final String TAG = "BreakoutESRenderer";
     private static final float tapTime = 0.25f;
     private static final float blockScale = 0.3f;
@@ -44,6 +45,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     private Obj oPaddle;
     private Obj oEditorButton;
     private Obj oAddBlockButton;
+    private Obj oRemBlockButton;
     private Obj oRSlider, oGSlider, oBSlider;
     private Obj lastDragged = null;
 
@@ -52,6 +54,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     public LinkedBlockingQueue<MotionEvent> motEvents;
 
     private int blocksAdded;
+    private int curLevel = 1;
     private boolean bEditor = false;
     //Quad qPaddle;
 
@@ -105,8 +108,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         Obj oWalls = new Obj();
         oEditorButton = new Obj();
         oAddBlockButton = new Obj();
-        //oAddBlockButton.pos.x = 2;
-        //oAddBlockButton.pos.y = 1;
+        oRemBlockButton = new Obj();
 
         oRSlider = new Obj();
         oGSlider = new Obj();
@@ -126,6 +128,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oBall.sImg = "drawable/pinball";
         oEditorButton.sImg = "drawable/editor";
         oAddBlockButton.sImg = "drawable/blockadd";
+        oRemBlockButton.sImg = "drawable/blockrem";
         oRSlider.sImg = "drawable/slider";
         oGSlider.sImg = "drawable/slider";
         oBSlider.sImg = "drawable/slider";
@@ -135,6 +138,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oEditorButton.type = Obj.typeButton;
         oAddBlockButton.type = Obj.typeButton;
         oAddBlockButton.active = false;
+        oRemBlockButton.type = Obj.typeButton;
+        oRemBlockButton.active = false;
         oRSlider.type = Obj.typeButton;
         oGSlider.type = Obj.typeButton;
         oBSlider.type = Obj.typeButton;
@@ -147,6 +152,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         mObjects.add(oBall);
         mObjects.add(oEditorButton);
         mObjects.add(oAddBlockButton);
+        mObjects.add(oRemBlockButton);
         mObjects.add(oRSlider);
         mObjects.add(oGSlider);
         mObjects.add(oBSlider);
@@ -191,6 +197,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oBall.genCollision(true);
         oEditorButton.genCollision();
         oAddBlockButton.genCollision();
+        oRemBlockButton.genCollision();
         oRSlider.genCollision();
         oGSlider.genCollision();
         oBSlider.genCollision();
@@ -289,6 +296,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         screenWidth = width;
         screenHeight = height;
 
+        //Lay out editor buttons
         oEditorButton.pos = screenToGL(new Point(0,0));
         //Log.e("THING", "pos: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
         oEditorButton.pos.x -= oEditorButton.collide.getWidth() / 2.0f;
@@ -297,15 +305,20 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         oAddBlockButton.pos.y = oEditorButton.pos.y - oEditorButton.collide.getHeight() / 2.0f - oAddBlockButton.collide.getHeight() / 2.0f - 0.3f;
 
         oRSlider.pos.y = oAddBlockButton.pos.y - oAddBlockButton.collide.getHeight() / 2.0f - oRSlider.collide.getHeight() / 2.0f - 0.3f;
-        oBSlider.pos.y = oRSlider.pos.y - 0.5f;
-        oGSlider.pos.y = oBSlider.pos.y - 0.5f;
+        oGSlider.pos.y = oRSlider.pos.y - 0.5f;
+        oBSlider.pos.y = oGSlider.pos.y - 0.5f;
 
         float sliderLen = Math.abs(sliderStartX - sliderEndX);
         sliderStartX = oAddBlockButton.pos.x - (sliderLen / 2.0f);
         sliderEndX = sliderStartX + sliderLen;
 
+        oRemBlockButton.pos.x = oAddBlockButton.pos.x;
+        oRemBlockButton.pos.y = oBSlider.pos.y - 0.2f - oRemBlockButton.collide.getHeight() / 2.0f - oBSlider.collide.getHeight() / 2.0f;
+        oRemBlockButton.scale = 0.8f;
+
         oEditorButton.updateCollision();
         oAddBlockButton.updateCollision();
+        oRemBlockButton.updateCollision();
         oRSlider.pos.x = sliderStartX;
         oGSlider.pos.x = sliderStartX;
         oBSlider.pos.x = sliderStartX;
@@ -429,12 +442,16 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     public void updateObjects(float dt)
     {
         //Process touch events synchronously
+        MotionEvent eLast = null;
         while(true)
         {
             MotionEvent e = motEvents.poll();
             if(e == null)
                 break;
-            onTouchEvent(e);
+            //We're piling these ACTION_UP's on top of each other for some reason, ignore extras
+            if(eLast == null || eLast.getAction() != e.getAction() || e.getAction() != MotionEvent.ACTION_UP)
+                onTouchEvent(e);
+            eLast = e;
         }
 
         if(bEditor)
@@ -452,7 +469,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         //oPaddle.update(dt);
         wallCheck(oBall);
 
-        oBall.setColor(1,1,1,1);
+        //oBall.setColor(1,1,1,1);
         boolean toReset = false;
         //boolean reflectedThisFrame = false;
         for(Object i : mObjects)
@@ -468,7 +485,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
                 if(o.type == Obj.typeBlock)
                 {
-                    oBall.setColor(1, 0, 0, 1);
+                    //oBall.setColor(1, 0, 0, 1);
 
                     //Sanity checks, cause hitting the ball at the wrong angle seems to make it go NaN,NaN,NaN on posx, posy, dir
                     float tempdir = reflect(oBall.dir, cm.normal2.angle());
@@ -487,17 +504,16 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     //mObjects.remove(o);
                     //mBlocks.remove(o);
                     blocksAdded--;
-                    //Log.e("THING", "Thing maybe resetting " + blocksAdded);
                     if(blocksAdded <= 0)
                     {
                         //TODO: Won state
                         toReset = true;
-                        //Log.e("THING", "Resetting" + blocksAdded);
+                        curLevel++; //Incr level TODO Test if last level or such
                     }
                 }
                 else if(o.type == Obj.typePaddle)
                 {
-                    oBall.setColor(1, 0, 0, 1);
+                    //oBall.setColor(1, 0, 0, 1);
 
                     float tempdir = reflect(oBall.dir, cm.normal2.angle());
                     Point tempPos = new Point();
@@ -510,29 +526,13 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                     if(tempPos.y > -500 && tempPos.y < 500)
                         oBall.pos.y = tempPos.y;
 
-                    //oBall.dir = reflect(oBall.dir, cm.normal2.angle());
                 }
             }
         }
 
         if(toReset)
         {
-            for(Object i : mBlocks)
-            {
-                mObjects.remove(i);
-            }
-            mBlocks.clear();
-            oBall.pos.x = -1.5f;
-            oBall.pos.y = 0;
-            oBall.dir = 0;
-            //Log.e("THING", "Gonna reset nao " + blocksAdded);
-            resetLevel();
-            for(Object i : mBlocks)
-            {
-                Obj o = (Obj) i;
-                o.q = getImage(o.sImg);
-                o.genCollision();
-            }
+            wipeLevel();
         }
 
         /*ContactManifold cm = oBall.colliding(oPaddle);
@@ -548,6 +548,26 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
 
 
+    }
+
+    public void wipeLevel()
+    {
+        for(Object i : mBlocks)
+        {
+            mObjects.remove(i);
+        }
+        mBlocks.clear();
+        oBall.pos.x = -1.5f;
+        oBall.pos.y = 0;
+        oBall.dir = 0;
+        //Log.e("THING", "Gonna reset nao " + blocksAdded);
+        resetLevel();
+        for(Object i : mBlocks)
+        {
+            Obj o = (Obj) i;
+            o.q = getImage(o.sImg);
+            o.genCollision();
+        }
     }
 
     public void setCam(float posX, float posY, float posZ)
@@ -584,7 +604,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         blocksAdded = 0;
         ballLaunched = false;
         oBall.speed = 0;
-        levelLoad("level1.sav");
+        levelLoad(curLevel);
         /*for(int x = 0; x < 2; x++)
         {
             for(int y = 0; y < 2; y++)
@@ -640,6 +660,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
     Obj tappedOn = null;
     static final float paddleDistThreshold = 0.5f;
     Obj clickAndDrag = null;
+    Point tappedDown = new Point(0,0);
     public void onTouchEvent(MotionEvent e)
     {
         float x = e.getX();
@@ -720,6 +741,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
             case MotionEvent.ACTION_DOWN:
             {
+                tappedDown.x = e.getX();
+                tappedDown.y = e.getY();
+                //Log.e("TAPDOWN", e.getX() + "," + e.getY());
                 if(bEditor)
                 {
                     //Log.e("ACTIONDOWN", "Pressing down");
@@ -730,6 +754,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         if(testClick.type == Obj.typeButton)
                         {
                             if(testClick == oEditorButton)
+                            {
+                                tappedOn = testClick;
+                                lastDown = SystemClock.uptimeMillis();
+                                break;
+                            }
+                            else if(testClick == oRemBlockButton)
                             {
                                 tappedOn = testClick;
                                 lastDown = SystemClock.uptimeMillis();
@@ -844,27 +874,40 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         break;
                     }
                     Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
-                    if(testClick != null && testClick == oEditorButton && testClick == tappedOn)
+                    if(testClick != null && testClick == tappedOn)
                     {
-                        long curTime = SystemClock.uptimeMillis();
-                        long diffTime = curTime - lastDown;
-                        float dt = (float) (diffTime) / 1000.0f;
-                        if (dt <= tapTime)
+                        if(testClick == oEditorButton)
                         {
-                            ballLaunched = false;
-                            bEditor = false;
-                            oAddBlockButton.active = false;
-                            oRSlider.active = false;
-                            oGSlider.active = false;
-                            oBSlider.active = false;
+                            long curTime = SystemClock.uptimeMillis();
+                            long diffTime = curTime - lastDown;
+                            float dt = (float) (diffTime) / 1000.0f;
+                            if (dt <= tapTime)
+                            {
+                                ballLaunched = false;
+                                bEditor = false;
+                                oAddBlockButton.active = false;
+                                oRemBlockButton.active = false;
+                                oRSlider.active = false;
+                                oGSlider.active = false;
+                                oBSlider.active = false;
 
-                            //Save level
-                            levelSave();
+                                //Save level
+                                levelSave();
 
-                            oEditorButton.sImg = "drawable/editor";
-                            oEditorButton.q = getImage(oEditorButton.sImg);
-                            //oEditorButton.genCollision();
-                            break;
+                                oEditorButton.sImg = "drawable/editor";
+                                oEditorButton.q = getImage(oEditorButton.sImg);
+                                //oEditorButton.genCollision();
+                                break;
+                            }
+                        }
+                        else if(testClick == oRemBlockButton)
+                        {
+                            for(Object i : mBlocks)
+                            {
+                                mObjects.remove(i);
+                            }
+                            mBlocks.clear();
+                            blocksAdded = 0;
                         }
                     }
                 }
@@ -880,6 +923,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         {
                             bEditor = true;
                             oAddBlockButton.active = true;
+                            oRemBlockButton.active = true;
                             oRSlider.active = true;
                             oGSlider.active = true;
                             oBSlider.active = true;
@@ -905,6 +949,23 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
                         oBall.speed = ballSpeed;
                         ballLaunched = true;
                     }
+
+                    //Log.e("TAPUP", e.getX() + "," + e.getY());
+                    //Log.e("TAPUP", "screen: " + (screenWidth - 100) + ", down: " + tappedDown.x);
+
+                    //Cheat codes
+                    if(tappedDown.x < 100 && e.getX() > screenWidth - 100)
+                    {
+                        curLevel++;
+                        //Log.e("TAPUP", "reset1 " + curLevel);
+                        wipeLevel();
+                    }
+                    else if(tappedDown.x > screenWidth - 100 && e.getX() < 100)
+                    {
+                        curLevel--;
+                        //Log.e("TAPUP", "reset2 " + curLevel);
+                        wipeLevel();
+                    }
                 }
                 break;
             }
@@ -913,7 +974,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
 
     public void levelSave()
     {
-        String filename = "level1.sav";
+        levelSave("level" + curLevel + ".sav");    //TODO
+    }
+
+    public void levelSave(String filename)
+    {
+        //TODO If player is in editor, save into this folder
         //File file = new File(mContext.getFilesDir(), filename);
         File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
         Log.e("LEVELSAVE", "Saving path: " + file.getAbsolutePath());
@@ -942,43 +1008,19 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
         }
 
         //Broadcast so it shows up in Windows Explorer...
-        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-        intent.setData(Uri.fromFile(file));
-        mContext.sendBroadcast(intent);
+        if(bDebug)
+        {
+            Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+            intent.setData(Uri.fromFile(file));
+            mContext.sendBroadcast(intent);
+        }
 
         //Log.e("LEVELSAVE", filename);
     }
 
-    public void levelLoad(String sFilename)
+    private void levelFromStr(String sLevelStr)
     {
-        String s = "0 0";
-
-        //File file = new File(mContext.getFilesDir(), sFilename);
-        //Log.e("LEVELLOAD", "Path: " + file.getAbsolutePath());
-        //FileInputStream inputStream;
-        try
-        {
-            InputStream inputStream = mContext.getResources().openRawResource(R.raw.level1);//inputStream = new FileInputStream(file);
-            int sz = inputStream.available();
-            byte[] inputStr = new byte[sz];
-            inputStream.read(inputStr, 0, sz);
-            s = new String(inputStr, "UTF-8");
-            /*s += mBlocks.size() + " ";
-            for(Object i : mBlocks)
-            {
-                Obj o = (Obj) i;
-
-                s += o.pos.x + " " + o.pos.y + " " + o.r + " " + o.g + " " + o.b + " ";
-                outputStream.write(s.getBytes());
-                s = "";
-            }*/
-            inputStream.close();
-        } catch (java.io.IOException e)
-        {
-            e.printStackTrace();
-        }
-
-        String[] splitValues = s.split("\\s+");
+        String[] splitValues = sLevelStr.split("\\s+");
         int curNum = 0;
         int numBlocks = Integer.parseInt(splitValues[curNum++]);
         for(int i = 0; i < numBlocks; i++)
@@ -987,18 +1029,86 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer {
             oBlock.scale = blockScale;
             oBlock.sImg = "drawable/block";
 
-            oBlock.pos.x = Float.parseFloat(splitValues[curNum++]);//x * blockGridSize;// - (2.5f * 0.25f);
-            oBlock.pos.y = Float.parseFloat(splitValues[curNum++]);//y * blockGridSize;// - (2.5f * 0.25f);
+            oBlock.pos.x = Float.parseFloat(splitValues[curNum++]);
+            oBlock.pos.y = Float.parseFloat(splitValues[curNum++]);
 
             oBlock.setColor(Float.parseFloat(splitValues[curNum++]),
-                            Float.parseFloat(splitValues[curNum++]),
-                            Float.parseFloat(splitValues[curNum++]));
+                    Float.parseFloat(splitValues[curNum++]),
+                    Float.parseFloat(splitValues[curNum++]));
             oBlock.type = Obj.typeBlock;
             mObjects.add(oBlock);
             mBlocks.add(oBlock);
             blocksAdded++;
-
         }
+    }
+
+    public void levelLoad(int levelNum)
+    {
+        int levelId;
+
+        switch(levelNum)
+        {
+            case 1:
+                levelId = R.raw.level1;
+                break;
+
+            case 2:
+                levelId = R.raw.level2;
+                break;
+
+            case 3:
+                levelId = R.raw.level3;
+                break;
+
+            case 4:
+                levelId = R.raw.level4;
+                break;
+
+            default:
+                levelId = R.raw.level1;
+                break;
+        }
+
+        String s = "";
+        try
+        {
+            InputStream inputStream = mContext.getResources().openRawResource(levelId);
+            int sz = inputStream.available();
+            byte[] inputStr = new byte[sz];
+            inputStream.read(inputStr, 0, sz);
+            s = new String(inputStr, "UTF-8");
+            inputStream.close();
+        } catch (java.io.IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        if(s.length() > 0)
+            levelFromStr(s);
+    }
+
+    public void levelLoad(String sFilename)
+    {
+        String s = "";
+
+        File file = new File(mContext.getFilesDir(), sFilename);
+        //Log.e("LEVELLOAD", "Path: " + file.getAbsolutePath());
+        FileInputStream inputStream;
+        try
+        {
+            inputStream = new FileInputStream(file);
+            int sz = inputStream.available();
+            byte[] inputStr = new byte[sz];
+            inputStream.read(inputStr, 0, sz);
+            s = new String(inputStr, "UTF-8");
+            inputStream.close();
+        } catch (java.io.IOException e)
+        {
+            e.printStackTrace();
+        }
+
+        if(s.length() > 0)
+            levelFromStr(s);
     }
 
 }
