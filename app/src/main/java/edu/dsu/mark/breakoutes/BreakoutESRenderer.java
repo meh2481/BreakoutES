@@ -36,6 +36,9 @@ import java.util.concurrent.*;
  */
 public class BreakoutESRenderer implements GLSurfaceView.Renderer
 {
+    public static final String SWIPE_LEFT = "SWIPERL";
+    public static final String SWIPE_RIGHT = "SWIPELR";
+
     private static final boolean bDebug = true; //TODO false
     private static final String TAG = "BreakoutESRenderer";
     private static final float tapTime = 0.25f;
@@ -52,6 +55,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     private Line drawLine;
 
     public LinkedBlockingQueue<MotionEvent> motEvents;
+    public LinkedBlockingQueue<String> miscEvents;
 
     private int blocksAdded;
     private int curLevel = 1;
@@ -95,6 +99,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         mObjects = new LinkedList<>();
         mBlocks = new LinkedList<>();
         motEvents = new LinkedBlockingQueue<>();
+        miscEvents = new LinkedBlockingQueue<>();
         lastTime = SystemClock.uptimeMillis();
 
         oBall = new Obj();
@@ -282,7 +287,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     @Override
     public void onSurfaceChanged(GL10 unused, int width, int height)
     {
-        Log.e("BREAKOUTES", "onSurfaceChanged()");
+        //Log.e("BREAKOUTES", "onSurfaceChanged()");
         // Adjust the viewport based on geometry changes,
         // such as screen rotation
         GLES20.glViewport(0, 0, width, height);
@@ -451,7 +456,33 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
             //We're piling these ACTION_UP's on top of each other for some reason, ignore extras
             if(eLast == null || eLast.getAction() != e.getAction() || e.getAction() != MotionEvent.ACTION_UP)
                 onTouchEvent(e);
+            //else
+            //    Log.e("UPDATEOBJ", "Duplicate event");
             eLast = e;
+        }
+
+        //Process other misc. input events synchronously as well
+        while(true)
+        {
+            String s = miscEvents.poll();
+            if (s == null)
+                break;
+
+            if (s == SWIPE_LEFT && bEditor)
+            {
+                curLevel++;
+                wipeLevel();
+                //Log.e("UPDATEOBJ", "Curlev: " + curLevel);
+            }
+            else if(s == SWIPE_RIGHT && bEditor)
+            {
+                if(curLevel > 1)
+                {
+                    curLevel--;
+                    wipeLevel();
+                }
+                //Log.e("UPDATEOBJ", "Curlev: " + curLevel);
+            }
         }
 
         if(bEditor)
@@ -660,9 +691,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     Obj tappedOn = null;
     static final float paddleDistThreshold = 0.5f;
     Obj clickAndDrag = null;
-    Point tappedDown = new Point(0,0);
+    //Point tappedDown = new Point(0,0);
     public void onTouchEvent(MotionEvent e)
     {
+        //Log.e("TOUCHEVENT", "evnt: "+e.getAction());
+
         float x = e.getX();
         float y = e.getY();
 
@@ -741,8 +774,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
 
             case MotionEvent.ACTION_DOWN:
             {
-                tappedDown.x = e.getX();
-                tappedDown.y = e.getY();
+                //tappedDown.x = e.getX();
+                //tappedDown.y = e.getY();
                 //Log.e("TAPDOWN", e.getX() + "," + e.getY());
                 if(bEditor)
                 {
@@ -948,23 +981,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                     {
                         oBall.speed = ballSpeed;
                         ballLaunched = true;
-                    }
-
-                    //Log.e("TAPUP", e.getX() + "," + e.getY());
-                    //Log.e("TAPUP", "screen: " + (screenWidth - 100) + ", down: " + tappedDown.x);
-
-                    //Cheat codes
-                    if(tappedDown.x < 100 && e.getX() > screenWidth - 100)
-                    {
-                        curLevel++;
-                        //Log.e("TAPUP", "reset1 " + curLevel);
-                        wipeLevel();
-                    }
-                    else if(tappedDown.x > screenWidth - 100 && e.getX() < 100)
-                    {
-                        curLevel--;
-                        //Log.e("TAPUP", "reset2 " + curLevel);
-                        wipeLevel();
                     }
                 }
                 break;

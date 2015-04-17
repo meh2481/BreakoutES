@@ -16,7 +16,7 @@ import static java.lang.Math.atan2;
  */
 public class BreakoutESSurfaceView extends GLSurfaceView {
 
-    private final BreakoutESRenderer mRenderer;
+    public final BreakoutESRenderer mRenderer;
 
     public BreakoutESSurfaceView(Context context) {
         super(context);
@@ -31,23 +31,6 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
 
         // Render the view only when there is a change in the drawing data
         //setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent e)
-    {
-        //TODO This is asynchronous!!!
-        try
-        {
-            mRenderer.motEvents.put(e);
-        } catch (InterruptedException e1)
-        {
-            e1.printStackTrace();
-        }
-        //mRenderer.onTouchEvent(e);
-
-
-        return true;
     }
 
     public void move(float x, float y, float z)
