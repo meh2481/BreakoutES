@@ -96,7 +96,21 @@ public class Circle extends Shape
         }
         else if(s.type == circleType)
         {
-            //TODO: Circle/circle collision; should be fairly simple i think
+            cm.collide = false;
+            cm.normal1.x = s.pos.x - pos.x;
+            cm.normal1.y = s.pos.y - pos.y;
+
+            Circle c = (Circle) s;
+
+            float normLen = (c.rad + rad) - cm.normal1.length();
+
+            cm.collide = normLen > 0.0f;
+
+            cm.normal1.normalize();
+            cm.normal1.mul(Math.abs(normLen));
+
+            cm.normal2.x = -cm.normal1.x;
+            cm.normal2.y = -cm.normal1.y;
         }
 
 

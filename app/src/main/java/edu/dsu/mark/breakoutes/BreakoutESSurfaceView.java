@@ -33,10 +33,10 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
         //setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
     }
 
-    public void move(float x, float y, float z)
-    {
-        mRenderer.setCam(x, y, z);
-    }
+    //public void move(float x, float y, float z)
+    //{
+    //    mRenderer.setCam(x, y, z);
+    //}
 
 }
 

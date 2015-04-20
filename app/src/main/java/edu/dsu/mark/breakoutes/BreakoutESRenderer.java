@@ -13,8 +13,8 @@ import android.view.MotionEvent;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -66,7 +66,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     private LinkedList<Obj> mObjects;
     private LinkedList<Obj> mBlocks;
 
-    private static final float paddleDist = 1.9f;   //Distance the paddle is from the center
+    private static final float WALL_DIST = 1.9f;   //Distance the paddle is from the center
+    private static final float PADDLE_DIST = 2.1f;
+    private static final float MAX_PADDLE_ANGLE = 125.0f;
+    private static final float MIN_PADDLE_ANGLE = 55.0f;
+    private static final float BOARD_MAX_ANGLE = -45.0f;
+    private static final float BOARD_MIN_ANGLE = -135.0f;
     private static final float ballSpeed = 3.0f;
     private static float sliderStartX = -2.1f;
     private static float sliderEndX = -2.8f;
@@ -78,7 +83,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
 
-    private float mAngle;
+    private float mAngle = 90;
     private float mAngleDest;
 
     private float camX, camY, camZ;
@@ -129,7 +134,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         oBSlider.pos.y = 0.75f;
 
         oWalls.sImg = "drawable/walls";
-        oPaddle.sImg = "drawable/paddle";
+        oPaddle.sImg = "drawable/paddle2";
         oBall.sImg = "drawable/pinball";
         oEditorButton.sImg = "drawable/editor";
         oAddBlockButton.sImg = "drawable/blockadd";
@@ -171,7 +176,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     {
         Log.e("BREAKOUTES", "onSurfaceCreated()");
         // Set the background frame color
-        GLES20.glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        GLES20.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
         GLES20.glEnable(GLES20.GL_BLEND);
 
@@ -198,7 +203,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         }
 
         //Generate collision info
-        oPaddle.genCollision();
+        oPaddle.genCollision(true);
         oBall.genCollision(true);
         oEditorButton.genCollision();
         oAddBlockButton.genCollision();
@@ -250,12 +255,14 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
 
         //Rotate and move paddle to the proper location
         oPaddle.angle = mAngle - 90.0f;
-        oPaddle.pos.x = (float) -(Math.cos(Point.TORAD * mAngle) * paddleDist);
-        oPaddle.pos.y = (float) -(Math.sin(Point.TORAD * mAngle) * paddleDist);
+        oPaddle.pos.x = (float) -(Math.cos(Point.TORAD * mAngle) * PADDLE_DIST);
+        oPaddle.pos.y = (float) -(Math.sin(Point.TORAD * mAngle) * PADDLE_DIST);
         if(!ballLaunched)
         {
-            oBall.pos.x = (float) (oPaddle.pos.x + (Math.cos(Point.TORAD * mAngle) * 0.145));
-            oBall.pos.y = (float) (oPaddle.pos.y + (Math.sin(Point.TORAD * mAngle) * 0.145));
+            Circle cPaddle = (Circle) oPaddle.collide;
+            Circle cBall = (Circle) oBall.collide;
+            oBall.pos.x = (float) (oPaddle.pos.x + (Math.cos(Point.TORAD * mAngle) * (cPaddle.rad + cBall.rad)));//0.145));
+            oBall.pos.y = (float) (oPaddle.pos.y + (Math.sin(Point.TORAD * mAngle) * (cPaddle.rad + cBall.rad)));//0.145));
             oBall.dir = mAngle;
         }
 
@@ -392,10 +399,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     /**
      * Sets the rotation angle of the triangle shape (mTriangle).
      */
-    public void setAngle(float angle)
-    {
-        mAngle = angle * Point.TODEG;
-    }
+    //public void setAngle(float angle)
+    //{
+    //    mAngle = angle * Point.TODEG;
+    //}
 
     public float wrapAngle(float angle)
     {
@@ -432,11 +439,22 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
 
         //Simple test to make ball bounce off circular walls
-        if(objDist > paddleDist)
+        if(objDist > WALL_DIST)
         {
-            o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
-            o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * paddleDist);
-            o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * paddleDist);
+            //Log.e("WALLCHECK", "Ball Angle: "+objAngle);
+            if(objAngle < BOARD_MAX_ANGLE && objAngle > BOARD_MIN_ANGLE)
+            {
+                //TODO Game over stuff
+                oBall.dir = 0;
+                oBall.speed = 0;
+                ballLaunched = false;
+            }
+            else
+            {
+                o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
+                o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * WALL_DIST);
+                o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * WALL_DIST);
+            }
             //oBall.dir = 0;
             //oBall.pos.x = -1.5f;
             //oBall.pos.y = 0;
@@ -767,7 +785,18 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                     long diffTime = curTime - lastDown;
                     float dt = (float) (diffTime) / 1000.0f;
                     if (ballLaunched || dt > tapTime)
-                        setAngle((float) (atan2(y, x)));
+                    {
+                        if(e.getY() > screenHeight / 2.0f)
+                        {
+                            //setAngle((float) (atan2(y, x)));
+                            mAngle = (float) (atan2(y,x) * Point.TODEG);
+                            //Log.e("PADDLEANGLE", "Angle: " + mAngle);
+                            if(mAngle > MAX_PADDLE_ANGLE)
+                                mAngle = MAX_PADDLE_ANGLE;
+                            if(mAngle < MIN_PADDLE_ANGLE)
+                                mAngle = MIN_PADDLE_ANGLE;
+                        }
+                    }
                 }
                 break;
             }
@@ -851,7 +880,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                             oBSlider.updateCollision();
                         }
                     }
-                    else if(screenToGL(new Point(e.getX(), e.getY())).length() <= paddleDist)
+                    else if(screenToGL(new Point(e.getX(), e.getY())).length() <= WALL_DIST)
                     {
                         //Tapping on nothing inside of the circle, reset colorizing
                         lastDragged = null;
@@ -882,15 +911,13 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
             {
                 if(bEditor)
                 {
-                    //Log.e("ACTIONUP", "set to null");
                     if(clickAndDrag != null)
                     {
-                        //Log.e("ACTIONUP", "size: " + clickAndDrag.collide.getWidth() + "," + clickAndDrag.collide.getHeight());
                         if(clickAndDrag.type == Obj.typeBlock)
                         {
                             clickAndDrag.updateCollision();
                             //Test and see if outside playable area, if so delete
-                            if (clickAndDrag.pos.length() > paddleDist)
+                            if (clickAndDrag.pos.length() > WALL_DIST)
                             {
                                 mObjects.remove(clickAndDrag);
                                 mBlocks.remove(clickAndDrag);
@@ -901,7 +928,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                         else
                         {
                             clickAndDrag.updateCollision();
-                            //Log.e("ACTIONUP", "Release slider");
                         }
                         clickAndDrag = null;
                         break;
@@ -969,7 +995,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                             oBall.pos.y = -1.5f;
                             oBall.pos.x = 0;
                             mAngle = 90;
-                            //oPaddle.pos.y = paddleDist;
+                            //oPaddle.pos.y = WALL_DIST;
                             //oPaddle.pos.x = 0;
                             break;
                         }
@@ -1080,6 +1106,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
                 levelId = R.raw.level4;
                 break;
 
+            //case 5:
+            //    levelId = R.raw.level5;
+            //    break;
+
             default:
                 levelId = R.raw.level1;
                 break;
@@ -1094,7 +1124,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
             inputStream.read(inputStr, 0, sz);
             s = new String(inputStr, "UTF-8");
             inputStream.close();
-        } catch (java.io.IOException e)
+        } catch (IOException e)
         {
             e.printStackTrace();
         }
