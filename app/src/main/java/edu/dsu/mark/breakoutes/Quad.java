@@ -35,13 +35,23 @@ public class Quad {
             "  gl_FragColor = vColor * texture2D( s_texture, v_texCoord );" +
             "}";
 
+    private final String fragmentShaderExternCode =
+            "#extension GL_OES_EGL_image_external : require\n" +
+            "precision mediump float;" +
+            "varying vec2 v_texCoord;" +
+            "uniform samplerExternalOES s_texture;" +
+            "uniform vec4 vColor;" +
+            "void main() {" +
+            "  gl_FragColor = vColor * texture2D( s_texture, v_texCoord );" +
+            "}";
+
     private FloatBuffer vertexBuffer;
     private ShortBuffer drawListBuffer;
     private int mProgram;
     public static float uvs[];
     public FloatBuffer uvBuffer;
-    private int width, height;
-    int texID;
+    public int width, height;
+    private int texID;
     private float r, g, b, a;
 
     // number of coordinates per vertex in this array
@@ -76,7 +86,7 @@ public class Quad {
     /**
      * Sets up the drawing object data for use in an OpenGL ES context.
      */
-    private void init()
+    private void init(boolean extern)
     {
         // initialize vertex byte buffer for shape coordinates
         ByteBuffer bb = ByteBuffer.allocateDirect(squareCoords.length * 4);
@@ -96,9 +106,13 @@ public class Quad {
         int vertexShader = BreakoutESRenderer.loadShader(
                 GLES20.GL_VERTEX_SHADER,
                 vertexShaderCode);
-        int fragmentShader = BreakoutESRenderer.loadShader(
-                GLES20.GL_FRAGMENT_SHADER,
-                fragmentShaderCode);
+
+        //Load different shader code if it's an image from a camera (I'm sorry)
+        int fragmentShader;
+        if(extern)
+            fragmentShader = BreakoutESRenderer.loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderExternCode);
+        else
+            fragmentShader = BreakoutESRenderer.loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentShaderCode);
 
         mProgram = GLES20.glCreateProgram();             // create empty OpenGL Program
         GLES20.glAttachShader(mProgram, vertexShader);   // add the vertex shader to program
@@ -179,9 +193,59 @@ public class Quad {
 
     }
 
+    public void loadTex(int tex)
+    {
+        init(true);
+
+        // Create our UV coordinates.
+        uvs = new float[] {
+                1.0f, 0.0f,
+                1.0f, 1.0f,
+                0.0f, 1.0f,
+                0.0f, 0.0f
+        };
+
+        // The texture buffer
+        ByteBuffer bb = ByteBuffer.allocateDirect(uvs.length * 4);
+        bb.order(ByteOrder.nativeOrder());
+        uvBuffer = bb.asFloatBuffer();
+        uvBuffer.put(uvs);
+        uvBuffer.position(0);
+
+        //texID = tex;
+
+        // Generate Textures, if more needed, alter these numbers.
+        /*int[] textures = new int[1];
+        GLES20.glGenTextures(1, textures, 0);
+
+        // Retrieve our image from resources.
+        int id = mContext.getResources().getIdentifier(s, null, mContext.getPackageName());
+
+        // Temporary create a bitmap
+        Bitmap bmp = BitmapFactory.decodeResource(mContext.getResources(), id);
+
+        width = bmp.getWidth();
+        height = bmp.getHeight();*/
+
+        // Bind texture
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
+        texID = tex;    //Save for later binding
+
+        // Set filtering
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
+        GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
+
+        // Load the bitmap into the bound texture.
+        /*GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
+
+        // We are done using the bitmap so we should recycle it.
+        bmp.recycle();*/
+    }
+
     public void loadImage(String s, Context mContext)
     {
-        init();
+        init(false);
 
         // Create our UV coordinates.
         uvs = new float[] {

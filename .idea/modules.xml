@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/BreakoutES.iml" filepath="$PROJECT_DIR$/BreakoutES.iml" />
+      <module fileurl="file://$PROJECT_DIR$/OpenGLESEnvironment.iml" filepath="$PROJECT_DIR$/OpenGLESEnvironment.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

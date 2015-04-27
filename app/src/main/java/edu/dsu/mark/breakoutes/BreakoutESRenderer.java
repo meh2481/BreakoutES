@@ -1,11 +1,16 @@
 package edu.dsu.mark.breakoutes;
 
+import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.SurfaceTexture;
+import android.hardware.Camera;
 import android.net.Uri;
+import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
+import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
@@ -23,6 +28,8 @@ import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
 import static java.lang.Math.atan2;
+
+import java.util.List;
 import java.util.concurrent.*;
 
 /**
@@ -34,7 +41,7 @@ import java.util.concurrent.*;
  *   <li>{@link android.opengl.GLSurfaceView.Renderer#onSurfaceChanged}</li>
  * </ul>
  */
-public class BreakoutESRenderer implements GLSurfaceView.Renderer
+public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener
 {
     public static final String SWIPE_LEFT = "SWIPERL";
     public static final String SWIPE_RIGHT = "SWIPELR";
@@ -53,6 +60,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     private Obj lastDragged = null;
 
     private Line drawLine;
+    private int[] mCamTex;
+    private Camera mCamera;
+    private SurfaceTexture mSTexture;
+    private boolean mUpdateST = false;
+    Quad qCamQuad = new Quad(); //We'll use a quad to draw the camera input (I'm sorry)
 
     public LinkedBlockingQueue<MotionEvent> motEvents;
     public LinkedBlockingQueue<String> miscEvents;
@@ -175,6 +187,19 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     public void onSurfaceCreated(GL10 unused, EGLConfig config)
     {
         Log.e("BREAKOUTES", "onSurfaceCreated()");
+        genCameraTexture();
+        mSTexture = new SurfaceTexture ( mCamTex[0] );
+        mSTexture.setOnFrameAvailableListener(this);
+
+        mCamera = Camera.open();
+        try
+        {
+            mCamera.setPreviewTexture(mSTexture);
+        }
+        catch(IOException ioe)
+        {
+            Log.e("SURFCREATED", "couldn't open camera");
+        }
         // Set the background frame color
         GLES20.glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA);
@@ -223,6 +248,15 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
     public void onDrawFrame(GL10 unused)
     {
 
+        synchronized(this)
+        {
+            if(mUpdateST)
+            {
+                mSTexture.updateTexImage();
+                mUpdateST = false;
+            }
+        }
+
         long curTime = SystemClock.uptimeMillis();
         long diffTime = curTime - lastTime;
         float dt = (float) (diffTime) / 1000.0f;
@@ -252,6 +286,15 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
 
         // Calculate the projection and view transformation
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
+
+        //Draw camera image below everything else
+        Rect r = screenRect();
+        float[] scratch = new float[16];
+        float[] finalmtx = new float[16];
+        Matrix.setIdentityM(scratch, 0);
+        Matrix.scaleM(scratch, 0, -r.getWidth(), -r.getHeight(), 1);
+        Matrix.multiplyMM(finalmtx, 0, mMVPMatrix, 0, scratch, 0);
+        qCamQuad.draw(finalmtx);
 
         //Rotate and move paddle to the proper location
         oPaddle.angle = mAngle - 90.0f;
@@ -287,6 +330,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         //oWalls.draw(mMVPMatrix);
         //oPaddle.draw(mMVPMatrix);
         //oBall.draw(mMVPMatrix);
+
+
 
         lastTime = curTime;
     }
@@ -337,6 +382,38 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         oRSlider.updateCollision();
         oGSlider.updateCollision();
         oBSlider.updateCollision();
+
+
+        //Update camera size
+        Camera.Parameters param = mCamera.getParameters();
+        List<Camera.Size> psize = param.getSupportedPreviewSizes();
+        if ( psize.size() > 0 )
+        {
+            int i;
+            //int maxW = 0;
+            //int maxi = 0;
+            //for ( i = 0; i < psize.size(); i++ )
+            //{
+            //    Log.e("CAMSIZE", "w: " + psize.get(i).width + ", h: " + psize.get(i).height);
+            //}
+            for ( i = 0; i < psize.size(); i++ )
+            {
+                if ( psize.get(i).width > width || psize.get(i).height > height )
+                {
+                    i--;
+                    break;
+                }
+            }
+            //if ( i > 0 )
+            //    i--;
+            param.setPreviewSize(psize.get(i).width, psize.get(i).height);
+            qCamQuad.width = psize.get(i).width;
+            qCamQuad.height = psize.get(i).height;
+            //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
+        }
+        param.set("orientation", "landscape");
+        mCamera.setParameters ( param );
+        mCamera.startPreview();
 
     }
 
@@ -674,11 +751,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
         }*/
     }
 
-    private Point screenToGL(Point pos)
+    private Rect screenRect()
     {
-        pos.x -= screenWidth / 2.0f;
-        pos.y -= screenHeight / 2.0f;
-
         final float tan45 = (float) Math.tan(Math.PI/4.0);
         final float aspect = screenWidth / screenHeight;
 
@@ -686,6 +760,15 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
 
         rcCam.h = tan45 * camZ * 2;
         rcCam.w = rcCam.h * aspect;
+        return rcCam;
+    }
+
+    private Point screenToGL(Point pos)
+    {
+        pos.x -= screenWidth / 2.0f;
+        pos.y -= screenHeight / 2.0f;
+
+        Rect rcCam = screenRect();
 
         Point ret = new Point();
         ret.x = pos.x * rcCam.w / screenWidth;
@@ -1155,6 +1238,32 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer
 
         if(s.length() > 0)
             levelFromStr(s);
+    }
+
+    private void genCameraTexture()
+    {
+        mCamTex = new int[1];
+        GLES20.glGenTextures(1, mCamTex, 0);
+        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, mCamTex[0]);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_NEAREST);
+        GLES20.glTexParameteri(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_NEAREST);
+        qCamQuad.loadTex(mCamTex[0]);
+    }
+
+    public synchronized void onFrameAvailable(SurfaceTexture st)
+    {
+        mUpdateST = true;
+    }
+
+    public void close()
+    {
+        mUpdateST = false;
+        mSTexture.release();
+        mCamera.stopPreview();
+        mCamera = null;
+        GLES20.glDeleteTextures(1, mCamTex, 0);
     }
 
 }
