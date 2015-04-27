@@ -10,6 +10,7 @@ import android.support.v4.view.GestureDetectorCompat;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
+import android.view.WindowManager;
 
 public class BreakoutESActivity extends Activity implements
         //SensorEventListener,
@@ -29,6 +30,10 @@ public class BreakoutESActivity extends Activity implements
 
         mGLView = new BreakoutESSurfaceView(this);
         setContentView(mGLView);
+
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON, WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        //mWL = ((PowerManager)getSystemService ( Context.POWER_SERVICE )).newWakeLock(PowerManager.FULL_WAKE_LOCK, "WakeLock");
+        //mWL.acquire();
 
         //senSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         //senAccelerometer = senSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
