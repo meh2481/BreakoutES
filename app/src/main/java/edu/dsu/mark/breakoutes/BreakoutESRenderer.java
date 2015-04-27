@@ -1,6 +1,6 @@
 package edu.dsu.mark.breakoutes;
 
-import android.annotation.TargetApi;
+//import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
@@ -10,7 +10,7 @@ import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
-import android.os.Build;
+//import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
@@ -47,10 +47,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     public static final String SWIPE_RIGHT = "SWIPELR";
 
     private static final boolean bDebug = true; //TODO false
-    private static final String TAG = "BreakoutESRenderer";
+    //private static final String TAG = "BreakoutESRenderer";
     private static final float tapTime = 0.25f;
     private static final float blockScale = 0.3f;
-    private static final float blockGridSize = blockScale / 1.5625f;//0.16f;
+    private static final float blockGridSize = blockScale / 1.5625f;
     private Obj oBall;
     private Obj oPaddle;
     private Obj oEditorButton;
@@ -59,9 +59,13 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private Obj oRSlider, oGSlider, oBSlider;
     private Obj lastDragged = null;
 
+    private static final int TOTAL_LIVES = 5;
+    private int mLives = TOTAL_LIVES;
+    Quad qLifeDraw;
+
     private Line drawLine;
     private int[] mCamTex;
-    private Camera mCamera;
+    private Camera mCamera = null;
     private SurfaceTexture mSTexture;
     private boolean mUpdateST = false;
     Quad qCamQuad = new Quad(); //We'll use a quad to draw the camera input (I'm sorry)
@@ -96,7 +100,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private final float[] mViewMatrix = new float[16];
 
     private float mAngle = 90;
-    private float mAngleDest;
+    //private float mAngleDest;
 
     private float camX, camY, camZ;
     private float screenWidth, screenHeight;
@@ -105,10 +109,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
     private boolean ballLaunched = false;
 
-    public void setContext(Context c)
-    {
-        mContext = c;
-    }
+    //public void setContext(Context c){mContext = c;}
 
     public BreakoutESRenderer(Context c)
     {
@@ -191,7 +192,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         mSTexture = new SurfaceTexture ( mCamTex[0] );
         mSTexture.setOnFrameAvailableListener(this);
 
-        mCamera = Camera.open();
+        if(mCamera == null)
+            mCamera = Camera.open();
         try
         {
             mCamera.setPreviewTexture(mSTexture);
@@ -220,6 +222,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         getImage("drawable/play");
         getImage("drawable/editor");
         getImage("drawable/block");
+        qLifeDraw = getImage("drawable/pinball");
 
         for(Object i : mBlocks)
         {
@@ -262,7 +265,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         float dt = (float) (diffTime) / 1000.0f;
         updateObjects(dt);
 
-        if (tiltMove && !bEditor)
+        /*if (tiltMove && !bEditor)
         {
             //float ANGLE_MOVE = 10.5f;
 
@@ -276,7 +279,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                 float dist = mAngle - mAngleDest;
                 mAngle -= dist / 3.0f;
             }
-        }
+        }*/
 
         // Draw background color
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
@@ -288,13 +291,29 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         Matrix.multiplyMM(mMVPMatrix, 0, mProjectionMatrix, 0, mViewMatrix, 0);
 
         //Draw camera image below everything else
-        Rect r = screenRect();
-        float[] scratch = new float[16];
-        float[] finalmtx = new float[16];
-        Matrix.setIdentityM(scratch, 0);
-        Matrix.scaleM(scratch, 0, -r.getWidth(), -r.getHeight(), 1);
-        Matrix.multiplyMM(finalmtx, 0, mMVPMatrix, 0, scratch, 0);
-        qCamQuad.draw(finalmtx);
+        if(!bEditor)
+        {
+            Rect r = screenRect();
+            float[] scratch = new float[16];
+            float[] finalmtx = new float[16];
+            Matrix.setIdentityM(scratch, 0);
+            Matrix.scaleM(scratch, 0, -r.getWidth(), -r.getHeight(), 1);
+            Matrix.multiplyMM(finalmtx, 0, mMVPMatrix, 0, scratch, 0);
+            qCamQuad.draw(finalmtx);
+
+            //Draw lives left
+            Point p = screenToGL(new Point(screenWidth, 0));
+            float liveDrawW = 0.25f;
+            for(int i = 0; i < mLives; i++)
+            {
+                Matrix.setIdentityM(scratch, 0);
+                Matrix.translateM(scratch, 0, p.x + liveDrawW / 2.0f, p.y - liveDrawW / 2.0f - (i * liveDrawW), 0);
+                Matrix.scaleM(scratch, 0, liveDrawW, liveDrawW, 1);
+                Matrix.multiplyMM(finalmtx, 0, mMVPMatrix, 0, scratch, 0);
+                qLifeDraw.draw(finalmtx);
+            }
+
+        }
 
         //Rotate and move paddle to the proper location
         oPaddle.angle = mAngle - 90.0f;
@@ -384,18 +403,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         oBSlider.updateCollision();
 
 
-        //Update camera size
+        //Update camera size (Example from http://maninara.blogspot.co.uk/2012/09/render-camera-preview-using-opengl-es.html)
         Camera.Parameters param = mCamera.getParameters();
         List<Camera.Size> psize = param.getSupportedPreviewSizes();
-        if ( psize.size() > 0 )
+        if(psize.size() > 0)
         {
             int i;
-            //int maxW = 0;
-            //int maxi = 0;
-            //for ( i = 0; i < psize.size(); i++ )
-            //{
-            //    Log.e("CAMSIZE", "w: " + psize.get(i).width + ", h: " + psize.get(i).height);
-            //}
             for ( i = 0; i < psize.size(); i++ )
             {
                 if ( psize.get(i).width > width || psize.get(i).height > height )
@@ -404,12 +417,9 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                     break;
                 }
             }
-            //if ( i > 0 )
-            //    i--;
             param.setPreviewSize(psize.get(i).width, psize.get(i).height);
             qCamQuad.width = psize.get(i).width;
             qCamQuad.height = psize.get(i).height;
-            //Log.i("mr","ssize: "+psize.get(i).width+", "+psize.get(i).height);
         }
         param.set("orientation", "landscape");
         mCamera.setParameters ( param );
@@ -441,46 +451,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         return shader;
     }
 
-    /**
-     * Utility method for debugging OpenGL calls. Provide the name of the call
-     * just after making it:
-     * <p/>
-     * <pre>
-     * mColorHandle = GLES20.glGetUniformLocation(mProgram, "vColor");
-     * MyGLRenderer.checkGlError("glGetUniformLocation");</pre>
-     *
-     * If the operation is not successful, the check throws an error.
-     *
-     * @param glOperation - Name of the OpenGL call to check.
-     */
-    /*public static void checkGlError(String glOperation)
-    {
-        int error;
-        while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR)
-        {
-            Log.e(TAG, glOperation + ": glError " + error);
-            throw new RuntimeException(glOperation + ": glError " + error);
-        }
-    }*/
-
-    /**
-     * Returns the rotation angle of the triangle shape (mTriangle).
-     *
-     * @return - A float representing the rotation angle.
-     */
-    //public float getAngle()
-    //{
-    //    return mAngle;
-    //}
-
-    /**
-     * Sets the rotation angle of the triangle shape (mTriangle).
-     */
-    //public void setAngle(float angle)
-    //{
-    //    mAngle = angle * Point.TODEG;
-    //}
-
     public float wrapAngle(float angle)
     {
         if(angle < 0)
@@ -490,7 +460,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         return angle;
     }
 
-    public float reflect(float angleToRef, float surfNormal)    //TODO: Make sure angles are correct, otherwise ignore
+    public float reflect(float angleToRef, float surfNormal)
     {
         angleToRef = wrapAngle(angleToRef + 180);
         float diff = surfNormal - angleToRef;
@@ -525,17 +495,22 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                 oBall.dir = 0;
                 oBall.speed = 0;
                 ballLaunched = false;
+                //TODO Death sound
+                mLives--;
+                if(mLives <= 0)
+                {
+                    mLives = TOTAL_LIVES;
+                    curLevel = 1;
+                    wipeLevel();
+                }
             }
             else
             {
                 o.dir = reflect(o.dir, wrapAngle(objAngle + 180));
                 o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * WALL_DIST);
                 o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * WALL_DIST);
+                //TODO Ball hit wall sound
             }
-            //oBall.dir = 0;
-            //oBall.pos.x = -1.5f;
-            //oBall.pos.y = 0;
-            //oPaddle.setColor(1,0,0,1);  //TODO: Game over
         }
     }
 
@@ -563,13 +538,13 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             if (s == null)
                 break;
 
-            if (s == SWIPE_LEFT && bEditor)
+            if (s.equals(SWIPE_LEFT) && bEditor)
             {
                 curLevel++;
                 wipeLevel();
                 //Log.e("UPDATEOBJ", "Curlev: " + curLevel);
             }
-            else if(s == SWIPE_RIGHT && bEditor)
+            else if(s.equals(SWIPE_RIGHT) && bEditor)
             {
                 if(curLevel > 1)
                 {
@@ -696,7 +671,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         }
     }
 
-    public void setCam(float posX, float posY, float posZ)
+    /*public void setCam(float posX, float posY, float posZ)
     {
         //Vector3d vec = new Vector3d(posX, posY, posZ);
         //float len = (float) Math.sqrt(posX*posX + posY*posY + posZ*posZ);
@@ -708,7 +683,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         mAngleDest = (float) ((float) Math.atan2(posX, posY) * 180 / Math.PI);
 
 
-    }
+    }*/
 
     private Quad getImage(String sImg)
     {
@@ -1071,7 +1046,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                             oBSlider.active = true;
                             oAddBlockButton.updateCollision();
                             oEditorButton.sImg = "drawable/play";
-                            oEditorButton.q  = getImage(oEditorButton.sImg);   //TODO Why doesn't this work?
+                            oEditorButton.q  = getImage(oEditorButton.sImg);
                             //oEditorButton.genCollision();
                             oBall.speed = 0;
                             oBall.dir = 0;
