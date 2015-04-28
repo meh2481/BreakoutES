@@ -5,9 +5,6 @@ package edu.dsu.mark.breakoutes;
  */
 import android.content.Context;
 import android.opengl.GLSurfaceView;
-import android.view.MotionEvent;
-
-import static java.lang.Math.atan2;
 
 /**
  * A view container where OpenGL ES graphics can be drawn on screen.
@@ -27,16 +24,6 @@ public class BreakoutESSurfaceView extends GLSurfaceView {
         // Set the Renderer for drawing on the GLSurfaceView
         mRenderer = new BreakoutESRenderer(context);
         setRenderer(mRenderer);
-        //mRenderer.setContext(context);
-
-        // Render the view only when there is a change in the drawing data
-        //setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
     }
-
-    //public void move(float x, float y, float z)
-    //{
-    //    mRenderer.setCam(x, y, z);
-    //}
-
 }
 

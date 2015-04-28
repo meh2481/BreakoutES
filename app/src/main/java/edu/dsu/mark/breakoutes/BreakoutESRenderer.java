@@ -1,6 +1,5 @@
 package edu.dsu.mark.breakoutes;
 
-//import android.annotation.TargetApi;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
@@ -10,7 +9,6 @@ import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.opengl.Matrix;
-//import android.os.Build;
 import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
@@ -32,22 +30,12 @@ import static java.lang.Math.atan2;
 import java.util.List;
 import java.util.concurrent.*;
 
-/**
- * Provides drawing instructions for a GLSurfaceView object. This class
- * must override the OpenGL ES drawing lifecycle methods:
- * <ul>
- *   <li>{@link android.opengl.GLSurfaceView.Renderer#onSurfaceCreated}</li>
- *   <li>{@link android.opengl.GLSurfaceView.Renderer#onDrawFrame}</li>
- *   <li>{@link android.opengl.GLSurfaceView.Renderer#onSurfaceChanged}</li>
- * </ul>
- */
 public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTexture.OnFrameAvailableListener
 {
     public static final String SWIPE_LEFT = "SWIPERL";
     public static final String SWIPE_RIGHT = "SWIPELR";
 
     private static final boolean bDebug = true; //TODO false
-    //private static final String TAG = "BreakoutESRenderer";
     private static final float tapTime = 0.25f;
     private static final float blockScale = 0.3f;
     private static final float blockGridSize = blockScale / 1.5625f;
@@ -76,7 +64,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private int blocksAdded;
     private int curLevel = 1;
     private boolean bEditor = false;
-    //Quad qPaddle;
 
     private HashMap<String, Quad> mImages;
     private LinkedList<Obj> mObjects;
@@ -94,22 +81,17 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
     private long lastTime;
 
-    // mMVPMatrix is an abbreviation for "Model View Projection Matrix"
     private final float[] mMVPMatrix = new float[16];
     private final float[] mProjectionMatrix = new float[16];
     private final float[] mViewMatrix = new float[16];
 
     private float mAngle = 90;
-    //private float mAngleDest;
 
     private float camX, camY, camZ;
     private float screenWidth, screenHeight;
-    private boolean tiltMove;
     private Context mContext;
 
     private boolean ballLaunched = false;
-
-    //public void setContext(Context c){mContext = c;}
 
     public BreakoutESRenderer(Context c)
     {
@@ -159,6 +141,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         oBall.type = Obj.typeBall;
         oPaddle.type = Obj.typePaddle;
         oEditorButton.type = Obj.typeButton;
+        if(!bDebug)
+            oEditorButton.active = false;
         oAddBlockButton.type = Obj.typeButton;
         oAddBlockButton.active = false;
         oRemBlockButton.type = Obj.typeButton;
@@ -209,10 +193,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
         mImages = new HashMap<>();  //Dump any previous image memory
 
-        //oBall.q = getImage("drawable/pinball");
-        //oPaddle.q = getImage("drawable/paddle");
-        //oWalls.q = getImage("drawable/walls");
-
         //Reload images
         for(Object i : mObjects)
         {
@@ -242,7 +222,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
         camX = camY = 0;
         camZ = -2;
-        tiltMove = false;
 
         drawLine = new Line();
     }
@@ -264,22 +243,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         long diffTime = curTime - lastTime;
         float dt = (float) (diffTime) / 1000.0f;
         updateObjects(dt);
-
-        /*if (tiltMove && !bEditor)
-        {
-            //float ANGLE_MOVE = 10.5f;
-
-            if (mAngle < mAngleDest)
-            {
-                float dist = mAngleDest - mAngle;
-                mAngle += dist / 3.0f;
-            }
-            else if (mAngle > mAngleDest)
-            {
-                float dist = mAngle - mAngleDest;
-                mAngle -= dist / 3.0f;
-            }
-        }*/
 
         // Draw background color
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT | GLES20.GL_DEPTH_BUFFER_BIT);
@@ -346,11 +309,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             Obj o = (Obj) i;
             o.draw(mMVPMatrix);
         }
-        //oWalls.draw(mMVPMatrix);
-        //oPaddle.draw(mMVPMatrix);
-        //oBall.draw(mMVPMatrix);
-
-
 
         lastTime = curTime;
     }
@@ -358,9 +316,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     @Override
     public void onSurfaceChanged(GL10 unused, int width, int height)
     {
-        //Log.e("BREAKOUTES", "onSurfaceChanged()");
-        // Adjust the viewport based on geometry changes,
-        // such as screen rotation
         GLES20.glViewport(0, 0, width, height);
 
         float ratio = (float) width / height;
@@ -374,7 +329,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
         //Lay out editor buttons
         oEditorButton.pos = screenToGL(new Point(0,0));
-        //Log.e("THING", "pos: " + oEditorButton.pos.x + "," + oEditorButton.pos.y);
         oEditorButton.pos.x -= oEditorButton.collide.getWidth() / 2.0f;
         oEditorButton.pos.y -= oEditorButton.collide.getHeight() / 2.0f;
         oAddBlockButton.pos.x = oEditorButton.pos.x;
@@ -427,15 +381,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
     }
 
-    /**
+    /*
      * Utility method for compiling a OpenGL shader.
-     * <p/>
-     * <p><strong>Note:</strong> When developing shaders, use the checkGlError()
-     * method to debug shader coding errors.</p>
-     *
-     * @param type       - Vertex or fragment shader type.
-     * @param shaderCode - String containing the shader code.
-     * @return - Returns an id for the shader.
      */
     public static int loadShader(int type, String shaderCode)
     {
@@ -482,13 +429,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     public void wallCheck(Obj o)
     {
 
-        float objDist = o.pos.length();//(float) Math.sqrt(o.x*o.x + o.y*o.y);
-        float objAngle = o.pos.angle();//float) (Point.TODEG * Math.atan2(o.y, o.x));
+        float objDist = o.pos.length();
+        float objAngle = o.pos.angle();
 
         //Simple test to make ball bounce off circular walls
         if(objDist > WALL_DIST)
         {
-            //Log.e("WALLCHECK", "Ball Angle: "+objAngle);
             if(objAngle < BOARD_MAX_ANGLE && objAngle > BOARD_MIN_ANGLE)
             {
                 //TODO Game over stuff
@@ -526,8 +472,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             //We're piling these ACTION_UP's on top of each other for some reason, ignore extras
             if(eLast == null || eLast.getAction() != e.getAction() || e.getAction() != MotionEvent.ACTION_UP)
                 onTouchEvent(e);
-            //else
-            //    Log.e("UPDATEOBJ", "Duplicate event");
             eLast = e;
         }
 
@@ -542,7 +486,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             {
                 curLevel++;
                 wipeLevel();
-                //Log.e("UPDATEOBJ", "Curlev: " + curLevel);
             }
             else if(s.equals(SWIPE_RIGHT) && bEditor)
             {
@@ -551,28 +494,20 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                     curLevel--;
                     wipeLevel();
                 }
-                //Log.e("UPDATEOBJ", "Curlev: " + curLevel);
             }
         }
 
         if(bEditor)
-        {
-            //oEditorButton.q  = getImage(oEditorButton.sImg);
             return;
-        }
 
         for(Object i : mObjects)
         {
             Obj o = (Obj) i;
             o.update(dt);
         }
-        //oBall.update(dt);
-        //oPaddle.update(dt);
         wallCheck(oBall);
 
-        //oBall.setColor(1,1,1,1);
         boolean toReset = false;
-        //boolean reflectedThisFrame = false;
         for(Object i : mObjects)
         {
             Obj o = (Obj) i;
@@ -586,9 +521,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
                 if(o.type == Obj.typeBlock)
                 {
-                    //oBall.setColor(1, 0, 0, 1);
-
-                    //Sanity checks, cause hitting the ball at the wrong angle seems to make it go NaN,NaN,NaN on posx, posy, dir
+                    //Sanity checks, cause hitting the ball at the wrong angle seems to make it go NaN,NaN,NaN batman
                     float tempdir = reflect(oBall.dir, cm.normal2.angle());
                     Point tempPos = new Point();
                     tempPos.x = oBall.pos.x + cm.normal2.x;
@@ -602,8 +535,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
 
                     o.active = false; //Break block
-                    //mObjects.remove(o);
-                    //mBlocks.remove(o);
                     blocksAdded--;
                     if(blocksAdded <= 0)
                     {
@@ -614,8 +545,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                 }
                 else if(o.type == Obj.typePaddle)
                 {
-                    //oBall.setColor(1, 0, 0, 1);
-
                     float tempdir = reflect(oBall.dir, cm.normal2.angle());
                     Point tempPos = new Point();
                     tempPos.x = oBall.pos.x + cm.normal2.x;
@@ -635,20 +564,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         {
             wipeLevel();
         }
-
-        /*ContactManifold cm = oBall.colliding(oPaddle);
-
-        if(cm.collide)  //If ball and paddle are hitting
-        {
-            oBall.setColor(1, 0, 0, 1);
-            oBall.dir = reflect(oBall.dir, cm.normal2.angle());
-            oBall.pos.x += cm.normal2.x;
-            oBall.pos.y += cm.normal2.y;
-        }
-        else*/
-
-
-
     }
 
     public void wipeLevel()
@@ -661,7 +576,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         oBall.pos.x = -1.5f;
         oBall.pos.y = 0;
         oBall.dir = 0;
-        //Log.e("THING", "Gonna reset nao " + blocksAdded);
         resetLevel();
         for(Object i : mBlocks)
         {
@@ -671,29 +585,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         }
     }
 
-    /*public void setCam(float posX, float posY, float posZ)
-    {
-        //Vector3d vec = new Vector3d(posX, posY, posZ);
-        //float len = (float) Math.sqrt(posX*posX + posY*posY + posZ*posZ);
-        //len /= 2;
-        //camX = posX;// /len;
-        //camY = posY;// /len;
-        //camZ = posZ;// /len;
-
-        mAngleDest = (float) ((float) Math.atan2(posX, posY) * 180 / Math.PI);
-
-
-    }*/
-
     private Quad getImage(String sImg)
     {
         if(mImages.containsKey(sImg))
-        {
-            //Log.e("BREAKOUTES", "getImage() already has " + sImg);
             return mImages.get(sImg);
-        }
 
-        //Log.e("BREAKOUTES", "getImage() creating quad " + sImg);
         Quad q = new Quad();
         q.loadImage(sImg, mContext);
         mImages.put(sImg, q);
@@ -706,24 +602,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         ballLaunched = false;
         oBall.speed = 0;
         levelLoad(curLevel);
-        /*for(int x = 0; x < 2; x++)
-        {
-            for(int y = 0; y < 2; y++)
-            {
-                Obj oBlock = new Obj();
-                oBlock.scale = blockScale;
-                oBlock.sImg = "drawable/block";
-
-                oBlock.pos.x = x * blockGridSize;// - (2.5f * 0.25f);
-                oBlock.pos.y = y * blockGridSize;// - (2.5f * 0.25f);
-
-                oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
-                oBlock.type = Obj.typeBlock;
-                mObjects.add(oBlock);
-                mBlocks.add(oBlock);
-                blocksAdded++;
-            }
-        }*/
     }
 
     private Rect screenRect()
@@ -767,11 +645,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     Obj tappedOn = null;
     static final float paddleDistThreshold = 0.5f;
     Obj clickAndDrag = null;
-    //Point tappedDown = new Point(0,0);
     public void onTouchEvent(MotionEvent e)
     {
-        //Log.e("TOUCHEVENT", "evnt: "+e.getAction());
-
         float x = e.getX();
         float y = e.getY();
 
@@ -784,12 +659,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             {
                 if(bEditor)
                 {
-                    //Log.e("ACTIONMOVE", "move");
                     if(clickAndDrag != null)
                     {
                         if(clickAndDrag.type == Obj.typeBlock)
                         {
-                            //Log.e("ACTIONMOVE", "not null");
                             Point pos = screenToGL(new Point(e.getX(), e.getY()));
                             pos.x = (int) (pos.x / blockGridSize);
                             pos.x = pos.x * blockGridSize;
@@ -814,7 +687,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                         else    //Slider
                         {
                             Point newPos = screenToGL(new Point(e.getX(), e.getY()));
-                            Log.e("ACTIONMOVE", newPos.x + "," + newPos.y);
                             clickAndDrag.pos.x = Math.min(sliderEndX, Math.max(newPos.x, sliderStartX));
                             if(clickAndDrag == oRSlider)
                             {
@@ -846,9 +718,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                     {
                         if(e.getY() > screenHeight / 2.0f)
                         {
-                            //setAngle((float) (atan2(y, x)));
                             mAngle = (float) (atan2(y,x) * Point.TODEG);
-                            //Log.e("PADDLEANGLE", "Angle: " + mAngle);
                             if(mAngle > MAX_PADDLE_ANGLE)
                                 mAngle = MAX_PADDLE_ANGLE;
                             if(mAngle < MIN_PADDLE_ANGLE)
@@ -861,16 +731,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
             case MotionEvent.ACTION_DOWN:
             {
-                //tappedDown.x = e.getX();
-                //tappedDown.y = e.getY();
-                //Log.e("TAPDOWN", e.getX() + "," + e.getY());
                 if(bEditor)
                 {
-                    //Log.e("ACTIONDOWN", "Pressing down");
                     Obj testClick = objectInside(screenToGL(new Point(e.getX(), e.getY())));
                     if(testClick != null)
                     {
-                        //Log.e("ACTIONDOWN", "not null");
                         if(testClick.type == Obj.typeButton)
                         {
                             if(testClick == oEditorButton)
@@ -887,17 +752,14 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                             }
                             else if(testClick == oAddBlockButton)
                             {
-                                //Obj o = new Obj();
-
                                 Obj oBlock = new Obj();
                                 oBlock.scale = blockScale;
                                 oBlock.sImg = "drawable/block";
                                 oBlock.q = getImage("drawable/block");
 
-                                oBlock.pos.x = x * blockGridSize;// - (2.5f * 0.25f);
-                                oBlock.pos.y = y * blockGridSize;// - (2.5f * 0.25f);
+                                oBlock.pos.x = x * blockGridSize;
+                                oBlock.pos.y = y * blockGridSize;
 
-                                //oBlock.setColor((float) Math.random(), (float) Math.random(), (float) Math.random(), 1.0f);
                                 oBlock.setColor(oAddBlockButton.r, oAddBlockButton.g, oAddBlockButton.b);
                                 oBlock.type = Obj.typeBlock;
                                 mObjects.add(oBlock);
@@ -913,20 +775,15 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                                 clickAndDrag.pos.y = (int)(clickAndDrag.pos.y / blockGridSize);
                                 clickAndDrag.pos.y = clickAndDrag.pos.y * blockGridSize;
                                 break;
-
-                                //mBlocks.add(o);
-                                //mObjects.add(o);
                             }
                             else if(testClick == oRSlider || testClick == oGSlider || testClick == oBSlider)
                             {
                                 clickAndDrag = testClick;
-                                //Log.e("ACTIONDOWN", "click on slider");
                                 break;
                             }
                         }
                         else if(testClick.type == Obj.typeBlock)
                         {
-                            //Log.e("ACTIONDOWN", "drag");
                             clickAndDrag = testClick;
                             lastDragged = testClick;
                             oAddBlockButton.setColor(testClick.r, testClick.g, testClick.b);
@@ -1013,7 +870,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
                                 oEditorButton.sImg = "drawable/editor";
                                 oEditorButton.q = getImage(oEditorButton.sImg);
-                                //oEditorButton.genCollision();
                                 break;
                             }
                         }
@@ -1047,14 +903,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                             oAddBlockButton.updateCollision();
                             oEditorButton.sImg = "drawable/play";
                             oEditorButton.q  = getImage(oEditorButton.sImg);
-                            //oEditorButton.genCollision();
                             oBall.speed = 0;
                             oBall.dir = 0;
                             oBall.pos.y = -1.5f;
                             oBall.pos.x = 0;
                             mAngle = 90;
-                            //oPaddle.pos.y = WALL_DIST;
-                            //oPaddle.pos.x = 0;
                             break;
                         }
                     }
@@ -1082,7 +935,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         //TODO If player is in editor, save into this folder
         //File file = new File(mContext.getFilesDir(), filename);
         File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), filename);
-        Log.e("LEVELSAVE", "Saving path: " + file.getAbsolutePath());
         //if (!file.mkdirs())
         //{
         //    Log.e("LEVELSAVE", "Directory not created");
@@ -1114,8 +966,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
             intent.setData(Uri.fromFile(file));
             mContext.sendBroadcast(intent);
         }
-
-        //Log.e("LEVELSAVE", filename);
     }
 
     private void levelFromStr(String sLevelStr)
@@ -1196,7 +1046,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         String s = "";
 
         File file = new File(mContext.getFilesDir(), sFilename);
-        //Log.e("LEVELLOAD", "Path: " + file.getAbsolutePath());
         FileInputStream inputStream;
         try
         {

@@ -17,7 +17,6 @@ public class Obj
 
     public Quad q;
     public Point pos;
-    //public float x, y;  // x,y screen pos in texels
     public float angle; //Rotation to draw at
     public float scale; //scale factor
 
@@ -88,14 +87,6 @@ public class Obj
             collide.pos.y = pos.y;
             collide.angle = angle;
         }
-    }
-
-    public void setColor(float cr, float cg, float cb, float ca)
-    {
-        r = cr;
-        g = cg;
-        b = cb;
-        a = ca;
     }
 
     public void setColor(float cr, float cg, float cb)

@@ -212,21 +212,6 @@ public class Quad {
         uvBuffer.put(uvs);
         uvBuffer.position(0);
 
-        //texID = tex;
-
-        // Generate Textures, if more needed, alter these numbers.
-        /*int[] textures = new int[1];
-        GLES20.glGenTextures(1, textures, 0);
-
-        // Retrieve our image from resources.
-        int id = mContext.getResources().getIdentifier(s, null, mContext.getPackageName());
-
-        // Temporary create a bitmap
-        Bitmap bmp = BitmapFactory.decodeResource(mContext.getResources(), id);
-
-        width = bmp.getWidth();
-        height = bmp.getHeight();*/
-
         // Bind texture
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0);
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex);
@@ -235,12 +220,6 @@ public class Quad {
         // Set filtering
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR);
         GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR);
-
-        // Load the bitmap into the bound texture.
-        /*GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0);
-
-        // We are done using the bitmap so we should recycle it.
-        bmp.recycle();*/
     }
 
     public void loadImage(String s, Context mContext)
