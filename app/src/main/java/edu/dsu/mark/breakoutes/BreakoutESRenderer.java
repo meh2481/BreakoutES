@@ -19,7 +19,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedList;
 
 import javax.microedition.khronos.egl.EGLConfig;
@@ -34,8 +36,11 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 {
     public static final String SWIPE_LEFT = "SWIPERL";
     public static final String SWIPE_RIGHT = "SWIPELR";
+    public static final String SWIPE_UP = "SWIPEBT";
+    public static final String SWIPE_DOWN = "SWIPETB";
+    public static final String TAP = "TAP";
 
-    private static final boolean bDebug = true; //TODO false
+    private static boolean bDebug = false;///true; //TODO false
     private static final float tapTime = 0.25f;
     private static final float blockScale = 0.3f;
     private static final float blockGridSize = blockScale / 1.5625f;
@@ -50,6 +55,10 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private static final int TOTAL_LIVES = 5;
     private int mLives = TOTAL_LIVES;
     Quad qLifeDraw;
+
+
+    private List<String> konamiCode;
+    private Iterator<String> konamiIterator;
 
     private Line drawLine;
     private int[] mCamTex;
@@ -75,7 +84,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private static final float MIN_PADDLE_ANGLE = 55.0f;
     private static final float BOARD_MAX_ANGLE = -45.0f;
     private static final float BOARD_MIN_ANGLE = -135.0f;
-    private static final float ballSpeed = 3.0f;
+    private static final float ballSpeed = 2.3f;
     private static float sliderStartX = -2.1f;
     private static float sliderEndX = -2.8f;
 
@@ -95,6 +104,19 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
     public BreakoutESRenderer(Context c)
     {
+        konamiCode = new ArrayList<>();
+        konamiCode.add(SWIPE_UP);
+        konamiCode.add(SWIPE_UP);
+        konamiCode.add(SWIPE_DOWN);
+        konamiCode.add(SWIPE_DOWN);
+        konamiCode.add(SWIPE_LEFT);
+        konamiCode.add(SWIPE_RIGHT);
+        konamiCode.add(SWIPE_LEFT);
+        konamiCode.add(SWIPE_RIGHT);
+        konamiCode.add(TAP);
+        konamiCode.add(TAP);
+        konamiIterator = konamiCode.iterator();
+
         mContext = c;
         mObjects = new LinkedList<>();
         mBlocks = new LinkedList<>();
@@ -171,7 +193,6 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     @Override
     public void onSurfaceCreated(GL10 unused, EGLConfig config)
     {
-        Log.e("BREAKOUTES", "onSurfaceCreated()");
         genCameraTexture();
         mSTexture = new SurfaceTexture ( mCamTex[0] );
         mSTexture.setOnFrameAvailableListener(this);
@@ -494,6 +515,23 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                     curLevel--;
                     wipeLevel();
                 }
+            }
+
+            if(s.equals(konamiIterator.next()))
+            {
+                Log.e("CODEINPUT", "Success " + s);
+                if(!konamiIterator.hasNext())
+                {
+                    konamiIterator = konamiCode.iterator();
+                    Log.e("CODEINPUT", "Code input success");
+                    bDebug = true;
+                    oEditorButton.active = true;
+                }
+            }
+            else
+            {
+                Log.e("CODEINPUT", "fail " + s);
+                konamiIterator = konamiCode.iterator();
             }
         }
 
@@ -999,19 +1037,19 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
         switch(levelNum)
         {
             case 1:
-                levelId = R.raw.level1;
-                break;
-
-            case 2:
                 levelId = R.raw.level2;
                 break;
 
-            case 3:
+            case 2:
                 levelId = R.raw.level3;
                 break;
 
-            case 4:
+            case 3:
                 levelId = R.raw.level4;
+                break;
+
+            case 4:
+                levelId = R.raw.level1; //Level 1 is too hard
                 break;
 
             //case 5:

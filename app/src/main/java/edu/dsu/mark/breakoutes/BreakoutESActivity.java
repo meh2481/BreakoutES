@@ -3,6 +3,7 @@ package edu.dsu.mark.breakoutes;
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.view.GestureDetectorCompat;
+import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.WindowManager;
@@ -38,6 +39,7 @@ public class BreakoutESActivity extends Activity implements
     {
         super.onPause();
         mGLView.onPause();
+        mGLView.mRenderer.close();
     }
 
     @Override
@@ -71,28 +73,35 @@ public class BreakoutESActivity extends Activity implements
         return true;
     }
 
+    public void putRenderEvent(String sEvent)
+    {
+        try
+        {
+            mGLView.mRenderer.miscEvents.put(sEvent);
+        } catch (InterruptedException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     @Override
     public boolean onFling(MotionEvent event1, MotionEvent event2, float velocityX, float velocityY)
     {
-        if(velocityX > 4000 && Math.abs(velocityY) < 4000)
+        if(velocityX > 4000 && Math.abs(velocityY) < 2000)
         {
-            try
-            {
-                mGLView.mRenderer.miscEvents.put(BreakoutESRenderer.SWIPE_RIGHT);
-            } catch (InterruptedException e)
-            {
-                e.printStackTrace();
-            }
+            putRenderEvent(BreakoutESRenderer.SWIPE_RIGHT);
         }
-        else if(velocityX < -4000 && Math.abs(velocityY) < 4000)
+        else if(velocityX < -4000 && Math.abs(velocityY) < 2000)
         {
-            try
-            {
-                mGLView.mRenderer.miscEvents.put(BreakoutESRenderer.SWIPE_LEFT);
-            } catch (InterruptedException e)
-            {
-                e.printStackTrace();
-            }
+            putRenderEvent(BreakoutESRenderer.SWIPE_LEFT);
+        }
+        else if(velocityY > 4000 && Math.abs(velocityX) < 2000)
+        {
+            putRenderEvent(BreakoutESRenderer.SWIPE_DOWN);
+        }
+        else if(velocityY < -4000 && Math.abs(velocityX) < 2000)
+        {
+            putRenderEvent(BreakoutESRenderer.SWIPE_UP);
         }
         return true;
     }
@@ -116,6 +125,7 @@ public class BreakoutESActivity extends Activity implements
     @Override
     public boolean onSingleTapUp(MotionEvent event)
     {
+        putRenderEvent(BreakoutESRenderer.TAP);
         return true;
     }
 

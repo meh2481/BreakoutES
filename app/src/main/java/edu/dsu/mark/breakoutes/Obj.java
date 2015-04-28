@@ -143,7 +143,7 @@ public class Obj
 
     public boolean isInside(Point p)
     {
-        if(collide != null)
+        if(collide != null && active)
             return collide.isInside(p);
         return false;
     }
