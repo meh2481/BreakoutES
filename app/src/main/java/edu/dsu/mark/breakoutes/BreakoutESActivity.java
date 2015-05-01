@@ -40,6 +40,7 @@ public class BreakoutESActivity extends Activity implements
         super.onPause();
         mGLView.onPause();
         mGLView.mRenderer.close();
+        mGLView.mRenderer.music.pause();
     }
 
     @Override
@@ -47,6 +48,7 @@ public class BreakoutESActivity extends Activity implements
     {
         super.onResume();
         mGLView.onResume();
+        mGLView.mRenderer.music.start();
     }
 
     @Override

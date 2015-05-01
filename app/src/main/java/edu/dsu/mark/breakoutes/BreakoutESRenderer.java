@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.opengl.GLES11Ext;
 import android.opengl.GLES20;
@@ -56,6 +57,12 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
     private int mLives = TOTAL_LIVES;
     Quad qLifeDraw;
 
+    public MediaPlayer music;
+    private MediaPlayer newlevelSound;
+    private MediaPlayer deathSound;
+    private MediaPlayer hitblockSound;
+    private MediaPlayer paddleSound;
+    private MediaPlayer wallSound;
 
     private List<String> konamiCode;
     private Iterator<String> konamiIterator;
@@ -188,6 +195,15 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
         resetLevel();
 
+        music = MediaPlayer.create(c, R.raw.theme);
+        music.setLooping(true);
+        music.start();
+
+        newlevelSound = MediaPlayer.create(c, R.raw.newlevel);
+        deathSound = MediaPlayer.create(c, R.raw.death);
+        hitblockSound = MediaPlayer.create(c, R.raw.hitblock);
+        paddleSound = MediaPlayer.create(c, R.raw.hitpaddle);
+        wallSound = MediaPlayer.create(c, R.raw.wallhit);
     }
 
     @Override
@@ -464,6 +480,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                 ballLaunched = false;
                 //TODO Death sound
                 mLives--;
+                deathSound.start();
                 if(mLives <= 0)
                 {
                     mLives = TOTAL_LIVES;
@@ -477,6 +494,7 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                 o.pos.x = (float) (Math.cos(objAngle * Point.TORAD) * WALL_DIST);
                 o.pos.y = (float) (Math.sin(objAngle * Point.TORAD) * WALL_DIST);
                 //TODO Ball hit wall sound
+                wallSound.start();
             }
         }
     }
@@ -573,12 +591,17 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
 
 
                     o.active = false; //Break block
+                    if(hitblockSound.isPlaying())
+                        hitblockSound.seekTo(0);
+                    else
+                        hitblockSound.start();
                     blocksAdded--;
                     if(blocksAdded <= 0)
                     {
                         //TODO: Won state
                         toReset = true;
                         curLevel++; //Incr level TODO Test if last level or such
+                        newlevelSound.start();
                     }
                 }
                 else if(o.type == Obj.typePaddle)
@@ -593,7 +616,8 @@ public class BreakoutESRenderer implements GLSurfaceView.Renderer, SurfaceTextur
                         oBall.pos.x = tempPos.x;
                     if(tempPos.y > -500 && tempPos.y < 500)
                         oBall.pos.y = tempPos.y;
-
+                    if(ballLaunched)
+                        paddleSound.start();
                 }
             }
         }
